@@ -1,0 +1,254 @@
+{
+  "name": "SMART NURTURE + WARMTH DECAY",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "hours", "hoursInterval": 24 }]
+        }
+      },
+      "id": "sn-schedule",
+      "name": "Schedule — Daily Nurture",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 480]
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "application": {
+          "__rl": true,
+          "value": "YOUR_AIRTABLE_BASE_ID",
+          "mode": "id"
+        },
+        "table": {
+          "__rl": true,
+          "value": "Leads",
+          "mode": "name",
+          "cachedResultName": "Leads"
+        },
+        "filterByFormula": "={Status} = 'active'",
+        "options": {}
+      },
+      "id": "sn-airtable-leads",
+      "name": "Airtable — Get Active Leads",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [220, 480]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Scores decay ~10% / day of inactivity; reply boost +30 (заглушка last_activity hours)\nreturn items.map(i => {\n  const f = i.json.fields || i.json;\n  const w = Number(f.Warmth ?? f.warmth ?? 50);\n  const last = f.LastActivity ? new Date(f.LastActivity) : new Date(0);\n  const days = (Date.now() - last.getTime()) / 864e5;\n  const decay = Math.pow(0.9, Math.max(0, days));\n  let next = Math.round(w * decay);\n  if (f.LastReplyAt) next = Math.min(100, next + 30);\n  return { json: { ...i.json, warmth: next, fields: { ...f, Warmth: next } } };\n});"
+      },
+      "id": "sn-decay",
+      "name": "Code — Apply Warmth Decay",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 480]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'gpt-4o-mini', messages: [{ role: 'system', content: 'Given lead JSON, return JSON only {decision:WAIT|FOLLOW_UP|CHANGE_CHANNEL|ARCHIVE, reason}' }, { role: 'user', content: JSON.stringify($json).slice(0,120000) }], response_format: { type: 'json_object' } }) }}",
+        "options": {}
+      },
+      "id": "sn-ai-next",
+      "name": "HTTP — AI Next Action",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [660, 480]
+    },
+    {
+      "parameters": {
+        "jsCode": "const base = $('Code — Apply Warmth Decay').first().json;\nlet decision = 'WAIT';\ntry {\n  const c = items[0].json.choices?.[0]?.message?.content;\n  const p = JSON.parse(c);\n  decision = String(p.decision || 'WAIT').toUpperCase();\n} catch(e) {}\nreturn [{ json: { ...base, decision } }];"
+      },
+      "id": "sn-parse",
+      "name": "Code — Parse Decision",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [880, 480]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "strict" },
+                "conditions": [{ "leftValue": "={{ $json.decision }}", "rightValue": "WAIT", "operator": { "type": "string", "operation": "equals" } }],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "wait"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "strict" },
+                "conditions": [{ "leftValue": "={{ $json.decision }}", "rightValue": "FOLLOW_UP", "operator": { "type": "string", "operation": "equals" } }],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "follow_up"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "strict" },
+                "conditions": [{ "leftValue": "={{ $json.decision }}", "rightValue": "CHANGE_CHANNEL", "operator": { "type": "string", "operation": "equals" } }],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "change_channel"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "strict" },
+                "conditions": [{ "leftValue": "={{ $json.decision }}", "rightValue": "ARCHIVE", "operator": { "type": "string", "operation": "equals" } }],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "archive"
+            }
+          ]
+        },
+        "options": { "fallbackOutput": "extra" }
+      },
+      "id": "sn-switch",
+      "name": "Switch — AI Decision",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [1100, 480]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "application": {
+          "__rl": true,
+          "value": "YOUR_AIRTABLE_BASE_ID",
+          "mode": "id"
+        },
+        "table": {
+          "__rl": true,
+          "value": "Leads",
+          "mode": "name",
+          "cachedResultName": "Leads"
+        },
+        "id": "={{ $json.id }}",
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Warmth": "={{ $json.fields.Warmth }}",
+            "LastDecayRun": "={{ $now.toISO() }}"
+          },
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "sn-airtable-decayed",
+      "name": "Airtable — Update Decayed",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [1340, 260]
+    },
+    {
+      "parameters": {
+        "resume": "afterTimeInterval",
+        "amount": 1,
+        "unit": "days"
+      },
+      "id": "sn-wait",
+      "name": "Wait — Idle (do nothing)",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [1560, 260]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Поставьте сюда отправку в расписание / очередь follow-up\nreturn items;"
+      },
+      "id": "sn-follow-placeholder",
+      "name": "Code — Queue Follow-up (stub)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1340, 460]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Смена канала: проставить поле NextChannel и т.д.\nreturn items.map(i => ({ json: { ...i.json, next_channel: 'email' } }));"
+      },
+      "id": "sn-change-ch",
+      "name": "Code — Plan Channel Change",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1340, 660]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "application": {
+          "__rl": true,
+          "value": "YOUR_AIRTABLE_BASE_ID",
+          "mode": "id"
+        },
+        "table": {
+          "__rl": true,
+          "value": "Leads",
+          "mode": "name",
+          "cachedResultName": "Leads"
+        },
+        "id": "={{ $json.id }}",
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Status": "archived",
+            "ArchivedReason": "decay_or_ai"
+          },
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "sn-archive",
+      "name": "Airtable — Archive Lead",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [1340, 860]
+    }
+  ],
+  "connections": {
+    "Schedule — Daily Nurture": {
+      "main": [[{ "node": "Airtable — Get Active Leads", "type": "main", "index": 0 }]]
+    },
+    "Airtable — Get Active Leads": {
+      "main": [[{ "node": "Code — Apply Warmth Decay", "type": "main", "index": 0 }]]
+    },
+    "Code — Apply Warmth Decay": {
+      "main": [[{ "node": "HTTP — AI Next Action", "type": "main", "index": 0 }]]
+    },
+    "HTTP — AI Next Action": {
+      "main": [[{ "node": "Code — Parse Decision", "type": "main", "index": 0 }]]
+    },
+    "Code — Parse Decision": {
+      "main": [[{ "node": "Switch — AI Decision", "type": "main", "index": 0 }]]
+    },
+    "Switch — AI Decision": {
+      "main": [
+        [{ "node": "Airtable — Update Decayed", "type": "main", "index": 0 }],
+        [{ "node": "Code — Queue Follow-up (stub)", "type": "main", "index": 0 }],
+        [{ "node": "Code — Plan Channel Change", "type": "main", "index": 0 }],
+        [{ "node": "Airtable — Archive Lead", "type": "main", "index": 0 }]
+      ]
+    },
+    "Airtable — Update Decayed": {
+      "main": [[{ "node": "Wait — Idle (do nothing)", "type": "main", "index": 0 }]]
+    }
+  },
+  "pinData": {},
+  "settings": { "executionOrder": "v1" },
+  "meta": {
+    "description": "Ежедневно: активные лиды → decay warmth → GPT решает WAIT/FOLLOW_UP/CHANGE_CHANNEL/ARCHIVE. Ветка WAIT: обновить warmth + Wait. Wait на 1 день — замените на нужную политику (или удалите webhook wait в UI)."
+  }
+}

@@ -1,0 +1,115 @@
+{
+  "name": "COMMAND CENTER",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "hours", "hoursInterval": 168 }]
+        }
+      },
+      "id": "cc-schedule",
+      "name": "Schedule — Weekly Report",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Соберите метрики из Airtable/БД через отдельные ноды — здесь заглушка агрегата\nreturn [{ json: { leads_per_day: 12, conversion: 0.08, cost_per_lead: 42, top_keywords: ['intent','reddit'] } }];"
+      },
+      "id": "cc-aggregate",
+      "name": "Code — Aggregate Pipeline",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [220, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'gpt-4o-mini', messages: [{ role: 'system', content: 'You are RevOps analyst. Return markdown executive summary + 3 predictions.' }, { role: 'user', content: JSON.stringify($json) }] }) }}",
+        "options": {}
+      },
+      "id": "cc-openai",
+      "name": "HTTP — AI Insights",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 400]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "message",
+        "operation": "post",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "#head-analytics",
+          "mode": "name"
+        },
+        "messageType": "text",
+        "text": "={{ $json.choices[0].message.content }}",
+        "otherOptions": {}
+      },
+      "id": "cc-slack",
+      "name": "Slack — Post Report",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [660, 400]
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "application": {
+          "__rl": true,
+          "value": "YOUR_AIRTABLE_BASE_ID",
+          "mode": "id"
+        },
+        "table": {
+          "__rl": true,
+          "value": "PipelineReports",
+          "mode": "name",
+          "cachedResultName": "PipelineReports"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Report": "={{ JSON.stringify($json).slice(0,100000) }}",
+            "Week": "={{ $now.toISO() }}"
+          },
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "cc-airtable",
+      "name": "Airtable — Save Report",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [880, 400]
+    }
+  ],
+  "connections": {
+    "Schedule — Weekly Report": {
+      "main": [[{ "node": "Code — Aggregate Pipeline", "type": "main", "index": 0 }]]
+    },
+    "Code — Aggregate Pipeline": {
+      "main": [[{ "node": "HTTP — AI Insights", "type": "main", "index": 0 }]]
+    },
+    "HTTP — AI Insights": {
+      "main": [
+        [
+          { "node": "Slack — Post Report", "type": "main", "index": 0 },
+          { "node": "Airtable — Save Report", "type": "main", "index": 0 }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": { "executionOrder": "v1" },
+  "meta": {
+    "description": "Еженедельно: агрегат KPI (заглушка) → GPT отчёт → Slack #head-analytics + запись отчёта в Airtable."
+  }
+}

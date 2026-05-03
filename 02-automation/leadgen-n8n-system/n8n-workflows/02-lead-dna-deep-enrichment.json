@@ -1,0 +1,234 @@
+{
+  "name": "LEAD DNA — Deep Enrichment",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "lead-dna",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "dna-webhook",
+      "name": "Webhook — From Intent Radar / External",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 420],
+      "webhookId": "lead-dna-ingest"
+    },
+    {
+      "parameters": {
+        "jsCode": "const b = items[0].json.body || items[0].json;\nreturn [{ json: {\n  ...b,\n  record_id: b.record_id || b.id,\n  username: b.username || b.reddit_user,\n  email: b.email,\n  company: b.company\n} }];"
+      },
+      "id": "dna-normalize-in",
+      "name": "Code — Normalize Incoming Lead",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [110, 420]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://www.reddit.com/user/{{ $json.username }}.json",
+        "options": {}
+      },
+      "id": "dna-reddit-profile",
+      "name": "HTTP — Reddit Profile Search",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [330, 420]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "ap1",
+              "leftValue": "={{ $env.APOLLO_API_KEY }}",
+              "rightValue": "",
+              "operator": { "type": "string", "operation": "notEmpty" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "dna-if-apollo",
+      "name": "IF — Has Apollo Key?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [550, 420]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.apollo.io/v1/people/match",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ email: $json.email }) }}",
+        "options": {}
+      },
+      "id": "dna-apollo",
+      "name": "HTTP — Apollo Enrichment",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [770, 320]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://customsearch.googleapis.com/customsearch/v1?q={{ encodeURIComponent($json.body?.company || $json.company || '') }}",
+        "options": {}
+      },
+      "id": "dna-google",
+      "name": "HTTP — Google Fallback",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [770, 520]
+    },
+    {
+      "parameters": { "mode": "append", "options": {} },
+      "id": "dna-merge-enrich",
+      "name": "Merge — Merge Enrichment",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [990, 420]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "anthropic-version", "value": "2023-06-01" },
+            { "name": "content-type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'claude-3-5-haiku-20241022', max_tokens: 2048, messages: [{ role: 'user', content: 'Build buyer persona JSON from: ' + JSON.stringify($json).slice(0,120000) }] }) }}",
+        "options": {}
+      },
+      "id": "dna-claude",
+      "name": "HTTP — AI Lead Profiler (Claude)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1210, 420]
+    },
+    {
+      "parameters": {
+        "jsCode": "const prev = $('Merge — Merge Enrichment').first()?.json || {};\nlet score = 50;\ntry {\n  const t = items[0].json.content?.[0]?.text || items[0].json.choices?.[0]?.message?.content;\n  const p = JSON.parse((t||'').match(/\\{[\\s\\S]*\\}/)?.[0] || '{}');\n  score = Number(p.score ?? p.fit_score ?? 50);\n} catch (e) {}\nreturn [{ json: { ...prev, profile: items[0].json, lead_score: score } }];"
+      },
+      "id": "dna-score",
+      "name": "Code — Calculate Score",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1430, 420]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "application": {
+          "__rl": true,
+          "value": "YOUR_AIRTABLE_BASE_ID",
+          "mode": "id"
+        },
+        "table": {
+          "__rl": true,
+          "value": "Leads",
+          "mode": "name",
+          "cachedResultName": "Leads"
+        },
+        "id": "={{ $json.record_id }}",
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "EnrichedJSON": "={{ JSON.stringify($json).slice(0,100000) }}",
+            "LeadScore": "={{ $json.lead_score }}"
+          },
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "dna-airtable-save",
+      "name": "Airtable — Save Enriched Lead",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [1650, 420]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose" },
+                "conditions": [{ "leftValue": "={{ $json.lead_score }}", "rightValue": 75, "operator": { "type": "number", "operation": "gte" } }],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "high"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose" },
+                "conditions": [{ "leftValue": "={{ $json.lead_score }}", "rightValue": 45, "operator": { "type": "number", "operation": "gte" } }],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "mid"
+            }
+          ]
+        },
+        "options": { "fallbackOutput": "extra" }
+      },
+      "id": "dna-switch-route",
+      "name": "Switch — Route by Score",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [1870, 420]
+    }
+  ],
+  "connections": {
+    "Webhook — From Intent Radar / External": {
+      "main": [[{ "node": "Code — Normalize Incoming Lead", "type": "main", "index": 0 }]]
+    },
+    "Code — Normalize Incoming Lead": {
+      "main": [[{ "node": "HTTP — Reddit Profile Search", "type": "main", "index": 0 }]]
+    },
+    "HTTP — Reddit Profile Search": {
+      "main": [[{ "node": "IF — Has Apollo Key?", "type": "main", "index": 0 }]]
+    },
+    "IF — Has Apollo Key?": {
+      "main": [
+        [{ "node": "HTTP — Apollo Enrichment", "type": "main", "index": 0 }],
+        [{ "node": "HTTP — Google Fallback", "type": "main", "index": 0 }]
+      ]
+    },
+    "HTTP — Apollo Enrichment": {
+      "main": [[{ "node": "Merge — Merge Enrichment", "type": "main", "index": 0 }]]
+    },
+    "HTTP — Google Fallback": {
+      "main": [[{ "node": "Merge — Merge Enrichment", "type": "main", "index": 1 }]]
+    },
+    "Merge — Merge Enrichment": {
+      "main": [[{ "node": "HTTP — AI Lead Profiler (Claude)", "type": "main", "index": 0 }]]
+    },
+    "HTTP — AI Lead Profiler (Claude)": {
+      "main": [[{ "node": "Code — Calculate Score", "type": "main", "index": 0 }]]
+    },
+    "Code — Calculate Score": {
+      "main": [[{ "node": "Airtable — Save Enriched Lead", "type": "main", "index": 0 }]]
+    },
+    "Airtable — Save Enriched Lead": {
+      "main": [[{ "node": "Switch — Route by Score", "type": "main", "index": 0 }]]
+    }
+  },
+  "pinData": {},
+  "settings": { "executionOrder": "v1" },
+  "meta": {
+    "description": "Схема макета: Reddit → IF Apollo / Google → Merge → Claude профайл → score → update Airtable → Switch. record_id и API keys настройте. IF Apollo проверяет APOLLO_API_KEY в env — при необходимости замените на свой критерий."
+  }
+}

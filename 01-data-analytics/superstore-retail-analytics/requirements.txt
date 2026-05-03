@@ -1,0 +1,11 @@
+# EDA (ноутбук)
+pandas>=2.0
+numpy>=1.24
+matplotlib>=3.7
+seaborn>=0.13
+jupyter>=1.0
+
+# Экспорт презентации в PPTX (html_to_pptx.py)
+playwright>=1.40
+python-pptx>=0.6.21
+lxml>=5.0

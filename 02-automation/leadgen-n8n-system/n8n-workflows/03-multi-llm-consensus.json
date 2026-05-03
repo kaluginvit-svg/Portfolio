@@ -1,0 +1,189 @@
+{
+  "name": "MULTI-LLM CONSENSUS",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "llm-manual-full",
+      "name": "Manual Trigger — Full Consensus",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [0, 360]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'gpt-4o', messages: [{ role: 'system', content: 'You strategize outreach in JSON {angle,cta,risk}' }, { role: 'user', content: JSON.stringify($json) }] }) }}",
+        "options": {}
+      },
+      "id": "llm-gpt-strategy",
+      "name": "HTTP — GPT-4o Strategy",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [220, 260]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "anthropic-version", "value": "2023-06-01" },
+            { "name": "content-type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'claude-3-5-haiku-20241022', max_tokens: 2048, messages: [{ role: 'user', content: 'Draft email using strategy: ' + JSON.stringify($json).slice(0,120000) }] }) }}",
+        "options": {}
+      },
+      "id": "llm-claude-craft",
+      "name": "HTTP — Claude Message Craft",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 360]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'gpt-4o-mini', messages: [{ role: 'system', content: 'Quality gate: OK or REVISE + reasons JSON' }, { role: 'user', content: JSON.stringify($json).slice(0,120000) }] }) }}",
+        "options": {}
+      },
+      "id": "llm-quality-gate",
+      "name": "HTTP — Quality Gate",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [660, 360]
+    },
+    {
+      "parameters": {
+        "jsCode": "const strat = $('HTTP — GPT-4o Strategy').first().json;\nconst draft = $('HTTP — Claude Message Craft').first().json;\nconst gate = items[0].json;\nreturn [{ json: { strategy: strat, draft, gate, merged_at: new Date().toISOString() } }];"
+      },
+      "id": "llm-merge-drafts",
+      "name": "Code — Merge Drafts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [880, 360]
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "application": {
+          "__rl": true,
+          "value": "YOUR_AIRTABLE_BASE_ID",
+          "mode": "id"
+        },
+        "table": {
+          "__rl": true,
+          "value": "OutreachQueue",
+          "mode": "name",
+          "cachedResultName": "OutreachQueue"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Payload": "={{ JSON.stringify($json).slice(0,100000) }}",
+            "Status": "queued"
+          },
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "llm-airtable-queue",
+      "name": "Airtable — Save to Queue",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [1100, 360]
+    },
+    {
+      "parameters": {},
+      "id": "llm-manual-warm",
+      "name": "Manual Trigger — Quick Draft (WARM)",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [0, 620]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'gpt-4o-mini', messages: [{ role: 'user', content: 'Short warm outreach JSON {subject,body}: ' + JSON.stringify($json) }] }) }}",
+        "options": {}
+      },
+      "id": "llm-quick-warm",
+      "name": "HTTP — Quick Draft (WARM)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 620]
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "application": {
+          "__rl": true,
+          "value": "YOUR_AIRTABLE_BASE_ID",
+          "mode": "id"
+        },
+        "table": {
+          "__rl": true,
+          "value": "OutreachQueue",
+          "mode": "name",
+          "cachedResultName": "OutreachQueue"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Payload": "={{ JSON.stringify($json).slice(0,100000) }}",
+            "Status": "queued_warm",
+            "Tier": "WARM"
+          },
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "llm-airtable-warm",
+      "name": "Airtable — Save Quick Draft",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [880, 620]
+    }
+  ],
+  "connections": {
+    "Manual Trigger — Full Consensus": {
+      "main": [[{ "node": "HTTP — GPT-4o Strategy", "type": "main", "index": 0 }]]
+    },
+    "HTTP — GPT-4o Strategy": {
+      "main": [[{ "node": "HTTP — Claude Message Craft", "type": "main", "index": 0 }]]
+    },
+    "HTTP — Claude Message Craft": {
+      "main": [[{ "node": "HTTP — Quality Gate", "type": "main", "index": 0 }]]
+    },
+    "HTTP — Quality Gate": {
+      "main": [[{ "node": "Code — Merge Drafts", "type": "main", "index": 0 }]]
+    },
+    "Code — Merge Drafts": {
+      "main": [[{ "node": "Airtable — Save to Queue", "type": "main", "index": 0 }]]
+    },
+    "Manual Trigger — Quick Draft (WARM)": {
+      "main": [[{ "node": "HTTP — Quick Draft (WARM)", "type": "main", "index": 0 }]]
+    },
+    "HTTP — Quick Draft (WARM)": {
+      "main": [[{ "node": "Airtable — Save Quick Draft", "type": "main", "index": 0 }]]
+    }
+  },
+  "pinData": {},
+  "settings": { "executionOrder": "v1" },
+  "meta": {
+    "description": "Полная ветка: GPT стратегия → Claude текст → Quality Gate → Merge → очередь. Вторая ветка: быстрый черновик для WARM. Подключите API keys / credentials."
+  }
+}

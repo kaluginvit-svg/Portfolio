@@ -1,0 +1,441 @@
+{
+  "name": "PREMIUM OUTREACH + CONVERSION FUNNEL",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "po-trigger-outreach",
+      "name": "Manual Trigger — Outreach",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [0, 320]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Демо-полезная нагрузка для Switch; замените на данные из очереди\nreturn [{ json: {\n  channel: 'email',\n  to_email: 'lead@example.com',\n  subject: 'Quick thought',\n  body: 'Hi — noticed your post about…',\n  contact_id: 'recXXXXXXXX'\n} }];"
+      },
+      "id": "po-prepare-lead",
+      "name": "Code — Prepare Lead Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [120, 320]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "loose" },
+                "conditions": [{ "leftValue": "={{ $json.channel }}", "rightValue": "email", "operator": { "type": "string", "operation": "equals" } }],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "email"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "loose" },
+                "conditions": [{ "leftValue": "={{ $json.channel }}", "rightValue": "reddit", "operator": { "type": "string", "operation": "equals" } }],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "reddit"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "loose" },
+                "conditions": [{ "leftValue": "={{ $json.channel }}", "rightValue": "linkedin", "operator": { "type": "string", "operation": "equals" } }],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "linkedin"
+            }
+          ]
+        },
+        "options": { "fallbackOutput": "extra" }
+      },
+      "id": "po-switch-route",
+      "name": "Switch — Route Channel",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [260, 320]
+    },
+    {
+      "parameters": {
+        "resume": "afterTimeInterval",
+        "amount": 75,
+        "unit": "seconds"
+      },
+      "id": "po-wait-jitter",
+      "name": "Wait — ~45–120s (set 75s demo, tune)",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [460, 120]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "message",
+        "operation": "send",
+        "sendTo": "={{ $json.to_email }}",
+        "subject": "={{ $json.subject }}",
+        "emailType": "text",
+        "message": "={{ $json.body }}\\n\\n---\\nIf this isn't relevant, let me know and I won't follow up.",
+        "options": {}
+      },
+      "id": "po-gmail-send",
+      "name": "Gmail — Send Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [700, 120]
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "application": {
+          "__rl": true,
+          "value": "YOUR_AIRTABLE_BASE_ID",
+          "mode": "id"
+        },
+        "table": {
+          "__rl": true,
+          "value": "OutreachLog",
+          "mode": "name",
+          "cachedResultName": "OutreachLog"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Channel": "email",
+            "Payload": "={{ JSON.stringify($json) }}",
+            "SentAt": "={{ $now.toISO() }}"
+          },
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "po-airtable-log-email",
+      "name": "Airtable — Log Email",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [900, 120]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Расписание follow-up (поля для следующего cron/wf)\nreturn items.map(i => ({ json: { ...i.json, follow_up_at: new Date(Date.now()+3*864e5).toISOString(), status: 'scheduled_followup' } }));"
+      },
+      "id": "po-code-followup",
+      "name": "Code — Schedule Follow-up",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 120]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "application": {
+          "__rl": true,
+          "value": "YOUR_AIRTABLE_BASE_ID",
+          "mode": "id"
+        },
+        "table": {
+          "__rl": true,
+          "value": "Contacts",
+          "mode": "name",
+          "cachedResultName": "Contacts"
+        },
+        "id": "={{ $json.contact_id }}",
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "LastContacted": "={{ $now.toISO() }}",
+            "Channel": "email"
+          },
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "po-airtable-contacted",
+      "name": "Airtable — Update Contacted",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [1340, 120]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "message",
+        "operation": "post",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "#reddit-manual",
+          "mode": "name"
+        },
+        "messageType": "text",
+        "text": "=Reddit outreach (human): {{ JSON.stringify($json) }}",
+        "otherOptions": {}
+      },
+      "id": "po-slack-reddit",
+      "name": "Slack — Reddit Manual",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [460, 320]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "message",
+        "operation": "post",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "#linkedin-manual",
+          "mode": "name"
+        },
+        "messageType": "text",
+        "text": "=LinkedIn outreach (human): {{ JSON.stringify($json) }}",
+        "otherOptions": {}
+      },
+      "id": "po-slack-li",
+      "name": "Slack — LinkedIn Manual",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [460, 520]
+    },
+    {
+      "parameters": {},
+      "id": "po-trigger-reply",
+      "name": "Manual Trigger — Inbound Reply",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [0, 760]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { text: 'Thanks — can we book a quick demo next week?', contact_id: 'recXXXXXXXX' } }];"
+      },
+      "id": "po-prepare-reply-demo",
+      "name": "Code — Prepare Sample Inbound Reply",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [120, 760]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Классификация ответа (замените на LLM или парсинг)\nreturn items.map(i => {\n  const t = String(i.json.text || i.json.body || '').toLowerCase();\n  let sentiment = 'question';\n  if (/not interested|unsubscribe|stop/.test(t)) sentiment = 'not_interested';\n  else if (/book|calendar|demo|yes|interested/.test(t)) sentiment = 'interested';\n  else if (/thanks|feedback/.test(t)) sentiment = 'feedback';\n  return { json: { ...i.json, sentiment } };\n});"
+      },
+      "id": "po-code-analyze-reply",
+      "name": "Code — Analyze Reply",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [260, 760]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "loose" },
+                "conditions": [{ "leftValue": "={{ $json.sentiment }}", "rightValue": "interested", "operator": { "type": "string", "operation": "equals" } }],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "interested"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "loose" },
+                "conditions": [{ "leftValue": "={{ $json.sentiment }}", "rightValue": "not_interested", "operator": { "type": "string", "operation": "equals" } }],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "not_interested"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "loose" },
+                "conditions": [{ "leftValue": "={{ $json.sentiment }}", "rightValue": "feedback", "operator": { "type": "string", "operation": "equals" } }],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "feedback"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "loose" },
+                "conditions": [{ "leftValue": "={{ $json.sentiment }}", "rightValue": "question", "operator": { "type": "string", "operation": "equals" } }],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "question"
+            }
+          ]
+        },
+        "options": { "fallbackOutput": "extra" }
+      },
+      "id": "po-switch-sentiment",
+      "name": "Switch — Reply Sentiment",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [500, 760]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "message",
+        "operation": "post",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "#sales",
+          "mode": "name"
+        },
+        "messageType": "text",
+        "text": "=Interested reply — send Calendly: {{ $json.calendly_url || 'https://calendly.com/YOUR_LINK' }}",
+        "otherOptions": {}
+      },
+      "id": "po-slack-calendly",
+      "name": "Slack — Send Calendly",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [720, 600]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "application": {
+          "__rl": true,
+          "value": "YOUR_AIRTABLE_BASE_ID",
+          "mode": "id"
+        },
+        "table": {
+          "__rl": true,
+          "value": "Contacts",
+          "mode": "name",
+          "cachedResultName": "Contacts"
+        },
+        "id": "={{ $json.contact_id }}",
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Status": "blacklisted",
+            "BlacklistReason": "reply_not_interested"
+          },
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "po-airtable-blacklist",
+      "name": "Airtable — Blacklist",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [720, 760]
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "application": {
+          "__rl": true,
+          "value": "YOUR_AIRTABLE_BASE_ID",
+          "mode": "id"
+        },
+        "table": {
+          "__rl": true,
+          "value": "Feedback",
+          "mode": "name",
+          "cachedResultName": "Feedback"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Raw": "={{ JSON.stringify($json) }}",
+            "CreatedAt": "={{ $now.toISO() }}"
+          },
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "po-airtable-feedback",
+      "name": "Airtable — Store Feedback",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [720, 920]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "message",
+        "operation": "post",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "#sales",
+          "mode": "name"
+        },
+        "messageType": "text",
+        "text": "=Question to forward: {{ JSON.stringify($json) }}",
+        "otherOptions": {}
+      },
+      "id": "po-slack-question",
+      "name": "Slack — Forward Question",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [720, 1080]
+    }
+  ],
+  "connections": {
+    "Manual Trigger — Outreach": {
+      "main": [[{ "node": "Code — Prepare Lead Payload", "type": "main", "index": 0 }]]
+    },
+    "Code — Prepare Lead Payload": {
+      "main": [[{ "node": "Switch — Route Channel", "type": "main", "index": 0 }]]
+    },
+    "Switch — Route Channel": {
+      "main": [
+        [{ "node": "Wait — ~45–120s (set 75s demo, tune)", "type": "main", "index": 0 }],
+        [{ "node": "Slack — Reddit Manual", "type": "main", "index": 0 }],
+        [{ "node": "Slack — LinkedIn Manual", "type": "main", "index": 0 }]
+      ]
+    },
+    "Wait — ~45–120s (set 75s demo, tune)": {
+      "main": [[{ "node": "Gmail — Send Email", "type": "main", "index": 0 }]]
+    },
+    "Gmail — Send Email": {
+      "main": [[{ "node": "Airtable — Log Email", "type": "main", "index": 0 }]]
+    },
+    "Airtable — Log Email": {
+      "main": [[{ "node": "Code — Schedule Follow-up", "type": "main", "index": 0 }]]
+    },
+    "Code — Schedule Follow-up": {
+      "main": [[{ "node": "Airtable — Update Contacted", "type": "main", "index": 0 }]]
+    },
+    "Manual Trigger — Inbound Reply": {
+      "main": [[{ "node": "Code — Prepare Sample Inbound Reply", "type": "main", "index": 0 }]]
+    },
+    "Code — Prepare Sample Inbound Reply": {
+      "main": [[{ "node": "Code — Analyze Reply", "type": "main", "index": 0 }]]
+    },
+    "Code — Analyze Reply": {
+      "main": [[{ "node": "Switch — Reply Sentiment", "type": "main", "index": 0 }]]
+    },
+    "Switch — Reply Sentiment": {
+      "main": [
+        [{ "node": "Slack — Send Calendly", "type": "main", "index": 0 }],
+        [{ "node": "Airtable — Blacklist", "type": "main", "index": 0 }],
+        [{ "node": "Airtable — Store Feedback", "type": "main", "index": 0 }],
+        [{ "node": "Slack — Forward Question", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": { "executionOrder": "v1" },
+  "meta": {
+    "description": "Два триггера: мульти-канальный аутрич (Email warm / Reddit+LI ручные в Slack) и анализ входящего ответа. Лимиты 30/day и трекинг без пикселей — доработать снаружи."
+  }
+}

@@ -1,0 +1,15 @@
+services:
+  bot:
+    build: .
+    container_name: svo-viplaty-bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      # SQLite внутри тома: данные и FSM переживают перезапуск контейнера
+      DATABASE_URL: sqlite:////data/leads.db
+    volumes:
+      - bot-data:/data
+
+volumes:
+  bot-data:

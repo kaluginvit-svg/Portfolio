@@ -1,0 +1,56 @@
+# ============================================================
+# Portfolio root .gitignore
+# Keeps the repository light — venvs, node_modules, secrets,
+# build outputs and IDE droppings stay out of git.
+# ============================================================
+
+# --- Python ---
+**/.venv/
+**/venv/
+**/env/
+**/__pycache__/
+**/.pytest_cache/
+**/.mypy_cache/
+**/.ruff_cache/
+*.py[cod]
+*.egg-info/
+.coverage
+htmlcov/
+
+# --- Node.js / Next.js ---
+**/node_modules/
+**/.next/
+**/dist/
+**/build/
+*.tsbuildinfo
+
+# --- Environment & secrets ---
+**/.env
+**/.env.local
+**/.env.*.local
+**/google_token.json
+**/yandex_token.json
+**/.sync_state/
+**/credentials.json
+**/service-account*.json
+
+# --- Logs, caches, local DBs ---
+*.log
+*.sqlite3
+*.sqlite3-*
+**/logs/
+.cache/
+
+# --- IDE / editors ---
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# --- OS droppings ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Local-only assets (optional sandbox) ---
+ASSETS/local/

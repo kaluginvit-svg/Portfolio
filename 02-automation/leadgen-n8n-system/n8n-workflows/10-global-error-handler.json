@@ -1,0 +1,187 @@
+{
+  "name": "GLOBAL ERROR HANDLER",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "ge-trigger",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [0, 520]
+    },
+    {
+      "parameters": {
+        "jsCode": "const e = items[0].json;\nconst msg = String(e.execution?.error?.message || e.error?.message || e.message || '');\nlet severity = 'INFO';\nif (/timeout|ECONNREFUSED|401|403|5\\d\\d|fatal/i.test(msg)) severity = 'CRITICAL';\nelse if (/rate|retry|warn|429/i.test(msg)) severity = 'WARNING';\nreturn [{ json: { severity, msg, wf: e.workflow?.name, at: new Date().toISOString(), raw: e } }];"
+      },
+      "id": "ge-format",
+      "name": "Code — Format Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [220, 520]
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "application": {
+          "__rl": true,
+          "value": "YOUR_AIRTABLE_BASE_ID",
+          "mode": "id"
+        },
+        "table": {
+          "__rl": true,
+          "value": "ErrorLog",
+          "mode": "name",
+          "cachedResultName": "ErrorLog"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Severity": "={{ $json.severity }}",
+            "Message": "={{ $json.msg }}",
+            "Workflow": "={{ $json.wf }}",
+            "Payload": "={{ JSON.stringify($json.raw).slice(0,100000) }}"
+          },
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "ge-airtable-log",
+      "name": "Airtable — Log Error",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [680, 520]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "strict" },
+                "conditions": [{ "leftValue": "={{ $json.severity }}", "rightValue": "CRITICAL", "operator": { "type": "string", "operation": "equals" } }],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "critical"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "strict" },
+                "conditions": [{ "leftValue": "={{ $json.severity }}", "rightValue": "WARNING", "operator": { "type": "string", "operation": "equals" } }],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "warning"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "strict" },
+                "conditions": [{ "leftValue": "={{ $json.severity }}", "rightValue": "INFO", "operator": { "type": "string", "operation": "equals" } }],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "info"
+            }
+          ]
+        },
+        "options": { "fallbackOutput": "extra" }
+      },
+      "id": "ge-switch",
+      "name": "Switch — Severity",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [440, 520]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { paused: true, hint: 'Wire n8n API deactivate or human runbook here' } }];"
+      },
+      "id": "ge-critical",
+      "name": "Code — CRITICAL (pause stub)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [920, 320]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "message",
+        "operation": "post",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "#ops-alerts",
+          "mode": "name"
+        },
+        "messageType": "text",
+        "text": "=CRITICAL: {{ $('Code — Format Error').first().json.msg }} ({{ $('Code — Format Error').first().json.wf }})",
+        "otherOptions": {}
+      },
+      "id": "ge-slack-critical",
+      "name": "Slack — Alert CRITICAL",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [920, 160]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "message",
+        "operation": "post",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "#ops-alerts",
+          "mode": "name"
+        },
+        "messageType": "text",
+        "text": "=WARNING: {{ $('Code — Format Error').first().json.msg }}",
+        "otherOptions": {}
+      },
+      "id": "ge-slack-warn",
+      "name": "Slack — Alert WARNING",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [920, 520]
+    },
+    {
+      "parameters": {
+        "jsCode": "return items;"
+      },
+      "id": "ge-info",
+      "name": "NoOp — INFO (logged only)",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [920, 720]
+    }
+  ],
+  "connections": {
+    "Error Trigger": {
+      "main": [[{ "node": "Code — Format Error", "type": "main", "index": 0 }]]
+    },
+    "Code — Format Error": {
+      "main": [
+        [
+          { "node": "Switch — Severity", "type": "main", "index": 0 },
+          { "node": "Airtable — Log Error", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Switch — Severity": {
+      "main": [
+        [
+          { "node": "Slack — Alert CRITICAL", "type": "main", "index": 0 },
+          { "node": "Code — CRITICAL (pause stub)", "type": "main", "index": 0 }
+        ],
+        [{ "node": "Slack — Alert WARNING", "type": "main", "index": 0 }],
+        [{ "node": "NoOp — INFO (logged only)", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": { "executionOrder": "v1" },
+  "meta": {
+    "description": "Параллельно: классификация severity + лог Airtable. CRITICAL → Slack + stub паузы; WARNING → Slack; INFO → тихо. Severity — эвристика в Code — Format Error."
+  }
+}

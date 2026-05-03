@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SQL Игра - Обучалка</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎮 SQL Игра - Обучалка</h1>
+            <p class="subtitle">Изучайте SQL через интерактивные задания</p>
+        </header>
+
+        <div class="player-setup">
+            <h2>Введите ваше имя</h2>
+            <input type="text" id="playerName" placeholder="Ваше имя" value="Игрок">
+            <button onclick="setPlayerName()">Начать игру</button>
+        </div>
+
+        <div class="levels">
+            <h2>Выберите уровень сложности</h2>
+            <div class="level-grid">
+                <div class="level-card" onclick="startLevel(1)">
+                    <div class="level-number">1</div>
+                    <h3>Базовые SELECT</h3>
+                    <p>Выборка данных, простые запросы</p>
+                    <div class="level-badge">Легко</div>
+                </div>
+                
+                <div class="level-card" onclick="startLevel(2)">
+                    <div class="level-number">2</div>
+                    <h3>WHERE и фильтрация</h3>
+                    <p>Условия, поиск, LIKE</p>
+                    <div class="level-badge">Средне</div>
+                </div>
+                
+                <div class="level-card" onclick="startLevel(3)">
+                    <div class="level-number">3</div>
+                    <h3>Сортировка и LIMIT</h3>
+                    <p>ORDER BY, BETWEEN, ограничения</p>
+                    <div class="level-badge">Средне</div>
+                </div>
+                
+                <div class="level-card" onclick="startLevel(4)">
+                    <div class="level-number">4</div>
+                    <h3>Агрегация</h3>
+                    <p>GROUP BY, HAVING, функции</p>
+                    <div class="level-badge">Сложно</div>
+                </div>
+                
+                <div class="level-card" onclick="startLevel(5)">
+                    <div class="level-number">5</div>
+                    <h3>JOIN</h3>
+                    <p>Объединение таблиц</p>
+                    <div class="level-badge">Очень сложно</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="stats-section">
+            <h2>Ваша статистика</h2>
+            <div id="stats" class="stats">
+                <div class="stat-item">
+                    <span class="stat-label">Всего попыток:</span>
+                    <span class="stat-value" id="totalAttempts">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Правильных:</span>
+                    <span class="stat-value" id="correctAttempts">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Всего очков:</span>
+                    <span class="stat-value" id="totalPoints">0</span>
+                </div>
+            </div>
+            <button onclick="loadStats()" class="btn-refresh">Обновить статистику</button>
+        </div>
+    </div>
+
+    <script>
+        function setPlayerName() {
+            const name = document.getElementById('playerName').value || 'Игрок';
+            fetch('/api/set_player', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({name: name})
+            }).then(() => {
+                alert(`Привет, ${name}! Выберите уровень для начала игры.`);
+                loadStats();
+            });
+        }
+
+        function startLevel(level) {
+            const name = document.getElementById('playerName').value || 'Игрок';
+            if (name) {
+                setPlayerName();
+                setTimeout(() => {
+                    window.location.href = `/game?level=${level}`;
+                }, 300);
+            } else {
+                alert('Сначала введите ваше имя!');
+            }
+        }
+
+        function loadStats() {
+            fetch('/api/stats')
+                .then(res => res.json())
+                .then(data => {
+                    document.getElementById('totalAttempts').textContent = data.total_attempts;
+                    document.getElementById('correctAttempts').textContent = data.correct_attempts;
+                    document.getElementById('totalPoints').textContent = data.total_points;
+                });
+        }
+
+        // Загружаем статистику при загрузке страницы
+        window.onload = function() {
+            loadStats();
+        };
+    </script>
+</body>
+</html>

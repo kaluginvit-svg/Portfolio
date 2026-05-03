@@ -1,0 +1,283 @@
+{
+  "name": "INTENT RADAR",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "minutes", "minutesInterval": 15 }]
+        }
+      },
+      "id": "ir-schedule",
+      "name": "Schedule — Scan Every 15min",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: {\n  reddit_q: 'competitor OR alternative',\n  twitter_q: 'keyword',\n  rss_url: 'https://hnrss.org/frontpage',\n  intent_threshold: 0.65\n} }];"
+      },
+      "id": "ir-load-config",
+      "name": "Code — Load Config",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [200, 400]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://www.reddit.com/search.json?q={{ encodeURIComponent($json.reddit_q) }}&limit=25",
+        "options": {}
+      },
+      "id": "ir-http-reddit",
+      "name": "HTTP — Reddit Search",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [420, 200]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://example.com/twitter-placeholder",
+        "options": {}
+      },
+      "id": "ir-http-twitter",
+      "name": "HTTP — Twitter/X Search",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [420, 400]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.rss_url }}",
+        "options": {}
+      },
+      "id": "ir-rss",
+      "name": "RSS Feed Read — Monitor",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [420, 600]
+    },
+    {
+      "parameters": { "mode": "append", "options": {} },
+      "id": "ir-merge-rt",
+      "name": "Merge — Reddit + Twitter",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [640, 320]
+    },
+    {
+      "parameters": { "mode": "append", "options": {} },
+      "id": "ir-merge-all",
+      "name": "Merge — + RSS",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [860, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "function rows(i) {\n  const j = i.json;\n  if (j.title && j.link) return [{ source: 'rss', text: `${j.title} ${j.contentSnippet||''}`, url: j.link, fingerprint: j.link }];\n  const ch = j.data?.children;\n  if (ch?.length) return ch.map(c => ({ source: 'reddit', text: `${c.data?.title||''} ${c.data?.selftext||''}`, url: `https://reddit.com${c.data?.permalink||''}`, fingerprint: c.data?.permalink || c.data?.id }));\n  return [{ source: 'web', text: JSON.stringify(j).slice(0,8000), url: '', fingerprint: String(Math.random()) }];\n}\nconst out=[];\nfor (const i of items) rows(i).forEach(r => out.push({ json: r }));\nreturn out;"
+      },
+      "id": "ir-normalize",
+      "name": "Code — Normalize Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1080, 400]
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "application": {
+          "__rl": true,
+          "value": "YOUR_AIRTABLE_BASE_ID",
+          "mode": "id"
+        },
+        "table": {
+          "__rl": true,
+          "value": "Leads",
+          "mode": "name",
+          "cachedResultName": "Leads"
+        },
+        "filterByFormula": "={Fingerprint} = '{{ $json.fingerprint }}'",
+        "options": {}
+      },
+      "id": "ir-airtable-search",
+      "name": "Airtable — Check Duplicates (search)",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [1300, 400],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Сопоставляем результат поиска с исходной строкой нормализации (порядок item = тот же)\nconst norm = $('Code — Normalize Data').all().map(i => i.json);\nconst out=[];\nfor (let idx=0; idx<items.length; idx++) {\n  const hit = items[idx].json;\n  const records = hit.records ?? (hit.id ? [hit] : []);\n  const exists = Array.isArray(records) ? records.length > 0 : !!hit.id;\n  if (!exists && norm[idx]) out.push({ json: norm[idx] });\n}\nreturn out;"
+      },
+      "id": "ir-dedupe",
+      "name": "Code — Filter Known (merge w/ search result)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1520, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'gpt-4o-mini', messages: [{ role: 'system', content: 'Return JSON only: {intent_score:number 0-1, reason:string}' }, { role: 'user', content: JSON.stringify($json) }], response_format: { type: 'json_object' } }) }}",
+        "options": {}
+      },
+      "id": "ir-openai",
+      "name": "HTTP — AI Intent Classifier (OpenAI)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1740, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "const baseRows = $('Code — Filter Known (merge w/ search result)').all();\nconst thresh = $('Code — Load Config').first().json.intent_threshold ?? 0.65;\nreturn items.map((item, idx) => {\n  const base = baseRows[idx]?.json || {};\n  let intent = 0;\n  let reason = '';\n  try {\n    const c = item.json.choices?.[0]?.message?.content;\n    const p = typeof c === 'string' ? JSON.parse(c) : {};\n    intent = Number(p.intent_score ?? p.intent ?? 0);\n    reason = String(p.reason || '');\n  } catch (e) {}\n  return { json: { ...base, intent_score: intent, reason, passes: intent >= thresh } };\n});"
+      },
+      "id": "ir-parse",
+      "name": "Code — Parse Intent + Threshold",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1960, 400]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [{ "id": "p1", "leftValue": "={{ $json.passes }}", "rightValue": true, "operator": { "type": "boolean", "operation": "equals" } }],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "ir-if-intent",
+      "name": "IF — Filter Low Intent",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [2180, 400]
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "application": {
+          "__rl": true,
+          "value": "YOUR_AIRTABLE_BASE_ID",
+          "mode": "id"
+        },
+        "table": {
+          "__rl": true,
+          "value": "Leads",
+          "mode": "name",
+          "cachedResultName": "Leads"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Fingerprint": "={{ $json.fingerprint || $json.body?.fingerprint }}",
+            "IntentScore": "={{ $json.intent_score }}",
+            "Snippet": "={{ JSON.stringify({ source: $json.source, url: $json.url, reason: $json.reason }).slice(0,99000) }}"
+          },
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "ir-save-lead",
+      "name": "Airtable — Save New Lead",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [2400, 320]
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "application": {
+          "__rl": true,
+          "value": "YOUR_AIRTABLE_BASE_ID",
+          "mode": "id"
+        },
+        "table": {
+          "__rl": true,
+          "value": "DetectionLog",
+          "mode": "name",
+          "cachedResultName": "DetectionLog"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Event": "intent_radar",
+            "Payload": "={{ JSON.stringify($json).slice(0,100000) }}"
+          },
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "ir-track",
+      "name": "Airtable — Track Detection",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [2400, 480]
+    }
+  ],
+  "connections": {
+    "Schedule — Scan Every 15min": {
+      "main": [[{ "node": "Code — Load Config", "type": "main", "index": 0 }]]
+    },
+    "Code — Load Config": {
+      "main": [
+        [
+          { "node": "HTTP — Reddit Search", "type": "main", "index": 0 },
+          { "node": "HTTP — Twitter/X Search", "type": "main", "index": 0 },
+          { "node": "RSS Feed Read — Monitor", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "HTTP — Reddit Search": {
+      "main": [[{ "node": "Merge — Reddit + Twitter", "type": "main", "index": 0 }]]
+    },
+    "HTTP — Twitter/X Search": {
+      "main": [[{ "node": "Merge — Reddit + Twitter", "type": "main", "index": 1 }]]
+    },
+    "Merge — Reddit + Twitter": {
+      "main": [[{ "node": "Merge — + RSS", "type": "main", "index": 0 }]]
+    },
+    "RSS Feed Read — Monitor": {
+      "main": [[{ "node": "Merge — + RSS", "type": "main", "index": 1 }]]
+    },
+    "Merge — + RSS": {
+      "main": [[{ "node": "Code — Normalize Data", "type": "main", "index": 0 }]]
+    },
+    "Code — Normalize Data": {
+      "main": [[{ "node": "Airtable — Check Duplicates (search)", "type": "main", "index": 0 }]]
+    },
+    "Airtable — Check Duplicates (search)": {
+      "main": [[{ "node": "Code — Filter Known (merge w/ search result)", "type": "main", "index": 0 }]]
+    },
+    "Code — Filter Known (merge w/ search result)": {
+      "main": [[{ "node": "HTTP — AI Intent Classifier (OpenAI)", "type": "main", "index": 0 }]]
+    },
+    "HTTP — AI Intent Classifier (OpenAI)": {
+      "main": [[{ "node": "Code — Parse Intent + Threshold", "type": "main", "index": 0 }]]
+    },
+    "Code — Parse Intent + Threshold": {
+      "main": [[{ "node": "IF — Filter Low Intent", "type": "main", "index": 0 }]]
+    },
+    "IF — Filter Low Intent": {
+      "main": [
+        [
+          { "node": "Airtable — Save New Lead", "type": "main", "index": 0 },
+          { "node": "Airtable — Track Detection", "type": "main", "index": 0 }
+        ],
+        []
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": { "executionOrder": "v1" },
+  "meta": {
+    "description": "Схема как на макете: 3 источника → 2×Merge → Normalize → Airtable search по Fingerprint → Code отфильтровывает уже известные → GPT intent → порог → запись в Leads + DetectionLog. Поля Airtable подстройте."
+  }
+}

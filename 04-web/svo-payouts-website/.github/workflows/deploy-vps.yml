@@ -1,0 +1,86 @@
+# Legacy: деплой Next.js (standalone) на VPS по SSH + rsync + PM2.
+# Основной production-путь: .github/workflows/deploy.yml (Docker → GHCR → Compose).
+# Секреты и сервер: deploy/VPS.md
+
+name: Deploy to VPS (legacy PM2)
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-vps-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  APP_DIR: web
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ${{ env.APP_DIR }}
+        run: npm ci
+
+      - name: Build
+        working-directory: ${{ env.APP_DIR }}
+        run: npm run build
+
+      - name: Prepare standalone bundle
+        working-directory: ${{ env.APP_DIR }}
+        run: |
+          cp -r public .next/standalone/public
+          mkdir -p .next/standalone/.next
+          cp -r .next/static .next/standalone/.next/static
+          cp deploy/ecosystem.config.cjs .next/standalone/
+
+      - name: Install rsync
+        run: sudo apt-get update -qq && sudo apt-get install -y rsync openssh-client
+
+      - name: Configure SSH
+        env:
+          SSH_KEY: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+          KNOWN_HOSTS: ${{ secrets.VPS_SSH_KNOWN_HOSTS }}
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          echo "$SSH_KEY" | tr -d '\r' > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          if [ -n "$KNOWN_HOSTS" ]; then
+            echo "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          else
+            ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+          fi
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: Rsync to VPS
+        env:
+          HOST: ${{ secrets.VPS_HOST }}
+          USER: ${{ secrets.VPS_USER }}
+          REMOTE_PATH: ${{ secrets.VPS_DEPLOY_PATH }}
+        run: |
+          rsync -avz --delete \
+            -e "ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes" \
+            "${APP_DIR}/.next/standalone/" \
+            "${USER}@${HOST}:${REMOTE_PATH}/"
+
+      - name: Reload PM2 on VPS
+        env:
+          HOST: ${{ secrets.VPS_HOST }}
+          USER: ${{ secrets.VPS_USER }}
+          REMOTE_PATH: ${{ secrets.VPS_DEPLOY_PATH }}
+        run: |
+          ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
+            "${USER}@${HOST}" \
+            "cd '${REMOTE_PATH}' && (pm2 describe svo-landing >/dev/null 2>&1 && pm2 reload svo-landing --update-env || pm2 start ecosystem.config.cjs) && pm2 save"

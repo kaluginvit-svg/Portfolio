@@ -1,0 +1,14 @@
+# OS / IDE
+.DS_Store
+Thumbs.db
+*.log
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Env (никогда не коммитить секреты)
+.env
+.env.*.local
+
+# Локальная копия data рядом с docker-compose (VPS / тест compose)
+/data/

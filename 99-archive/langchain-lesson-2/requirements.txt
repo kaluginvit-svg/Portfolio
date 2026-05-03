@@ -1,0 +1,7 @@
+python-dotenv>=1.0
+langchain>=1.0,<2
+langchain-core>=0.3,<2
+langgraph>=0.2,<2
+langchain-openai>=0.3,<2
+openai>=1.40
+pydantic>=2

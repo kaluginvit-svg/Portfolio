@@ -1,0 +1,195 @@
+# Build & push image to GHCR, then pull + up on VPS (Docker Compose).
+# Secrets: VPS_HOST, VPS_USER, VPS_SSH_KEY; optional VPS_PORT (default 22).
+# Путь деплоя: Variables → VPS_APP_DIR = /var/www/svorazbor (рекомендуется, видно в логах).
+#   Либо Secret VPS_APP_DIR — тот же путь, но GitHub маскирует его в логах как ***.
+# См. web/README.md — раздел «Деплой в production: Docker…»
+
+name: Deploy (Docker → GHCR → VPS)
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - "web/**"
+      - "docker-compose.yml"
+      - ".github/workflows/deploy.yml"
+      - "deploy/nginx/**"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-docker-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  build-push-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: GHCR namespace (lowercase)
+        id: ghcr
+        shell: bash
+        run: echo "owner=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # NEXT_PUBLIC_* вшиваются в бандл при build; только .env на VPS для них не подхватится.
+      # GitHub → Settings → Variables: NEXT_PUBLIC_SITE_URL, NEXT_PUBLIC_YM_ID, NEXT_PUBLIC_GA_ID
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: ./web
+          file: ./web/Dockerfile
+          push: true
+          build-args: |
+            NEXT_PUBLIC_SITE_URL=${{ vars.NEXT_PUBLIC_SITE_URL }}
+            NEXT_PUBLIC_GA_ID=${{ vars.NEXT_PUBLIC_GA_ID }}
+            NEXT_PUBLIC_YM_ID=${{ vars.NEXT_PUBLIC_YM_ID }}
+          tags: |
+            ${{ env.REGISTRY }}/${{ steps.ghcr.outputs.owner }}/svo-site:latest
+            ${{ env.REGISTRY }}/${{ steps.ghcr.outputs.owner }}/svo-site:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # При ошибке pull (403) для приватного GHCR добавьте PAT с read:packages в секрет GHCR_READ_TOKEN
+      # и замените строку login на: echo "${{ secrets.GHCR_READ_TOKEN }}" | docker login ghcr.io -u USER --password-stdin
+      - name: Verify VPS secrets
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_APP_DIR: ${{ vars.VPS_APP_DIR || secrets.VPS_APP_DIR }}
+        run: |
+          missing=
+          [ -z "$VPS_HOST" ] && missing="${missing} VPS_HOST"
+          [ -z "$VPS_USER" ] && missing="${missing} VPS_USER"
+          [ -z "$VPS_SSH_KEY" ] && missing="${missing} VPS_SSH_KEY"
+          [ -z "$VPS_APP_DIR" ] && missing="${missing} VPS_APP_DIR"
+          if [ -n "$missing" ]; then
+            echo "::error::Задайте Secrets/Variables (пусто сейчас):$missing"
+            echo "Путь деплоя лучше задать как Repository variable VPS_APP_DIR=/var/www/svorazbor — тогда логи не маскируют путь."
+            exit 1
+          fi
+
+      # Не используйте script_stop — в appleboy/ssh-action@v1.2.x этого input нет (warning + игнор).
+      - name: Deploy on VPS
+        uses: appleboy/ssh-action@v1.2.2
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || '22' }}
+          script: |
+            set -euo pipefail
+            APP_DIR=$(printf '%s' "${{ vars.VPS_APP_DIR || secrets.VPS_APP_DIR }}" | tr -d '\r\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+            if [ -z "$APP_DIR" ]; then
+              echo "::error::VPS_APP_DIR пустой: задайте Variable или Secret VPS_APP_DIR"
+              exit 1
+            fi
+            if [ ! -d "$APP_DIR" ]; then
+              echo "=== Диагностика: каталог деплоя недоступен ==="
+              echo "Ожидаемый путь (проверьте на VPS): $APP_DIR"
+              echo "SSH-пользователь: $(whoami) uid=$(id -u)"
+              parent="$(dirname "$APP_DIR")"
+              if [ -d "$parent" ]; then
+                echo "Содержимое $parent:"
+                ls -la "$parent"
+              else
+                echo "Родительский каталог не существует: $parent"
+                echo "Выполните: sudo mkdir -p \"$APP_DIR\""
+              fi
+              if [ -e "$APP_DIR" ]; then
+                echo "Путь существует, но это не каталог или нет прав входа — проверьте chmod/chown."
+                ls -ld "$APP_DIR" 2>&1 || true
+              else
+                echo "Каталог отсутствует — на VPS: git clone + sudo bash deploy/scripts/setup-var-www-svorazbor.sh"
+              fi
+              echo "::error::Создайте каталог и docker-compose + .env (см. web/README «Первый раз на VPS»). В GitHub: Settings → Variables → VPS_APP_DIR = /var/www/svorazbor (Variable, не Secret — путь будет виден в логах)."
+              exit 1
+            fi
+            cd "$APP_DIR"
+            # Иначе на VPS вечно старый compose (например порт 3000) — только pull образа его не обновляет
+            curl -fsSL -o docker-compose.yml \
+              "https://raw.githubusercontent.com/${{ github.repository }}/${{ github.ref_name }}/docker-compose.yml"
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+            docker compose pull
+            docker compose up -d --remove-orphans
+            docker image prune -f
+
+  smoke-production:
+    name: Smoke (svorazbor.ru)
+    runs-on: ubuntu-latest
+    needs: build-push-deploy
+    steps:
+      - name: Curl главная и /api/health (retry)
+        env:
+          MAX_ATTEMPTS: "20"
+          SLEEP_SEC: "5"
+        run: |
+          set -euo pipefail
+          BASE="https://svorazbor.ru"
+
+          # -4: ложные 404 при битой AAAA; -L: итоговый код после редиректов (https/www)
+          http_code() {
+            curl -4 -sS -L --max-redirs 10 -o /dev/null -w "%{http_code}" \
+              --connect-timeout 15 --max-time 30 \
+              -A "Mozilla/5.0 (compatible; SVO-deploy-smoke/1.0; +https://svorazbor.ru)" \
+              "$1" || echo "000"
+          }
+
+          wait_http_200() {
+            local label="$1"
+            local url="$2"
+            local i code
+            for i in $(seq 1 "${MAX_ATTEMPTS}"); do
+              code=$(http_code "$url")
+              if [[ "$code" == "200" ]]; then
+                echo "OK: $label -> HTTP 200 (попытка $i/${MAX_ATTEMPTS})"
+                return 0
+              fi
+              echo "Попытка $i/${MAX_ATTEMPTS}: $label -> HTTP $code ($url), пауза ${SLEEP_SEC}s…"
+              sleep "${SLEEP_SEC}"
+            done
+            echo "::error::$label: нет HTTP 200 после ${MAX_ATTEMPTS} попыток (url=$url)"
+            return 1
+          }
+
+          wait_http_200_home() {
+            local i u code
+            local -a urls=("${BASE}/" "https://www.svorazbor.ru/")
+            for i in $(seq 1 "${MAX_ATTEMPTS}"); do
+              local parts=()
+              for u in "${urls[@]}"; do
+                code=$(http_code "$u")
+                parts+=("$u → $code")
+                if [[ "$code" == "200" ]]; then
+                  echo "OK: Главная -> HTTP 200 через $u (попытка $i/${MAX_ATTEMPTS})"
+                  return 0
+                fi
+              done
+              echo "Попытка $i/${MAX_ATTEMPTS}: Главная -> ${parts[*]}, пауза ${SLEEP_SEC}s…"
+              sleep "${SLEEP_SEC}"
+            done
+            echo "::error::Главная: нет HTTP 200 ни на ${BASE}/, ни на https://www.svorazbor.ru/ после ${MAX_ATTEMPTS} попыток"
+            return 1
+          }
+
+          wait_http_200_home
+          wait_http_200 "Health" "${BASE}/api/health"
+          echo "Smoke: главная (apex или www) и /api/health вернули 200."

@@ -1,0 +1,143 @@
+{
+  "name": "SHADOW MODE — Validation Layer",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "sh-manual",
+      "name": "Manual Trigger — Shadow Run",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [0, 420]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Помечаем исполнение как shadow: без реальной отправки во вне\nreturn items.map(i => ({ json: { ...i.json, shadow: true } }));"
+      },
+      "id": "sh-code-check",
+      "name": "Code — Shadow Check",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [220, 420]
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "application": {
+          "__rl": true,
+          "value": "YOUR_AIRTABLE_BASE_ID",
+          "mode": "id"
+        },
+        "table": {
+          "__rl": true,
+          "value": "ShadowDrafts",
+          "mode": "name",
+          "cachedResultName": "ShadowDrafts"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Draft": "={{ JSON.stringify($json).slice(0,100000) }}",
+            "CreatedAt": "={{ $now.toISO() }}"
+          },
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "sh-airtable-draft",
+      "name": "Airtable — Log AI Draft",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [440, 420]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "message",
+        "operation": "post",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "#shadow-mode",
+          "mode": "name"
+        },
+        "messageType": "text",
+        "text": "=Shadow draft logged (no external send). id={{ $json.id }}",
+        "otherOptions": {}
+      },
+      "id": "sh-slack",
+      "name": "Slack — Shadow Notify",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [660, 420]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'gpt-4o-mini', messages: [{ role: 'system', content: 'Compare AI draft vs human_ref. JSON {alignment_score:number,notes}' }, { role: 'user', content: 'ai_draft=' + JSON.stringify($('Airtable — Log AI Draft').first().json) + ' human_ref=paste_when_available' }] }) }}",
+        "options": {}
+      },
+      "id": "sh-compare",
+      "name": "HTTP — Compare AI vs Human",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [880, 420]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "application": {
+          "__rl": true,
+          "value": "YOUR_AIRTABLE_BASE_ID",
+          "mode": "id"
+        },
+        "table": {
+          "__rl": true,
+          "value": "ShadowDrafts",
+          "mode": "name",
+          "cachedResultName": "ShadowDrafts"
+        },
+        "id": "={{ $('Airtable — Log AI Draft').first().json.id }}",
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "ScoreJSON": "={{ JSON.stringify($json).slice(0,100000) }}"
+          },
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "sh-airtable-score",
+      "name": "Airtable — Save Shadow Score",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [1100, 420]
+    }
+  ],
+  "connections": {
+    "Manual Trigger — Shadow Run": {
+      "main": [[{ "node": "Code — Shadow Check", "type": "main", "index": 0 }]]
+    },
+    "Code — Shadow Check": {
+      "main": [[{ "node": "Airtable — Log AI Draft", "type": "main", "index": 0 }]]
+    },
+    "Airtable — Log AI Draft": {
+      "main": [[{ "node": "Slack — Shadow Notify", "type": "main", "index": 0 }]]
+    },
+    "Slack — Shadow Notify": {
+      "main": [[{ "node": "HTTP — Compare AI vs Human", "type": "main", "index": 0 }]]
+    },
+    "HTTP — Compare AI vs Human": {
+      "main": [[{ "node": "Airtable — Save Shadow Score", "type": "main", "index": 0 }]]
+    }
+  },
+  "pinData": {},
+  "settings": { "executionOrder": "v1" },
+  "meta": {
+    "description": "Shadow: лог AI-черновика → Slack → сравнение с human (поле human_reply добавьте в триггер) → оценка в Airtable."
+  }
+}

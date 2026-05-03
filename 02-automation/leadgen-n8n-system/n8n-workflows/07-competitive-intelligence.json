@@ -1,0 +1,157 @@
+{
+  "name": "COMPETITIVE INTELLIGENCE",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "hours", "hoursInterval": 6 }]
+        }
+      },
+      "id": "ci-schedule",
+      "name": "Schedule — Competitor Scan",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 400]
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "application": {
+          "__rl": true,
+          "value": "YOUR_AIRTABLE_BASE_ID",
+          "mode": "id"
+        },
+        "table": {
+          "__rl": true,
+          "value": "Competitors",
+          "mode": "name",
+          "cachedResultName": "Competitors"
+        },
+        "options": {}
+      },
+      "id": "ci-airtable-competitors",
+      "name": "Airtable — Load Competitors",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [220, 400]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://www.reddit.com/search.json?q={{ encodeURIComponent(($json.fields?.Name || $json.Name || '') + ' complaint') }}&limit=50",
+        "options": {}
+      },
+      "id": "ci-http-complaints",
+      "name": "HTTP — Search Complaints (Reddit)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'gpt-4o-mini', messages: [{ role: 'system', content: 'Classify Reddit chunk: negative sentiment?, switching intent? JSON {sentiment:number, switching_intent:number, summary}' }, { role: 'user', content: JSON.stringify($json).slice(0,120000) }], response_format: { type: 'json_object' } }) }}",
+        "options": {}
+      },
+      "id": "ci-openai-sentiment",
+      "name": "HTTP — Comp Sentiment (OpenAI)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [660, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "let switching = 0;\ntry {\n  const c = items[0].json.choices?.[0]?.message?.content;\n  const p = JSON.parse(typeof c === 'string' ? c : '{}');\n  switching = Number(p.switching_intent ?? 0);\n} catch (e) {}\nreturn [{ json: { ...items[0].json, switching_intent: switching } }];"
+      },
+      "id": "ci-parse-opp",
+      "name": "Code — Parse Opportunity Score",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [780, 400]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "opp",
+              "leftValue": "={{ $json.switching_intent }}",
+              "rightValue": 0.65,
+              "operator": { "type": "number", "operation": "gte" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "ci-if-opportunity",
+      "name": "IF — Is Opportunity?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [1000, 400]
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "application": {
+          "__rl": true,
+          "value": "YOUR_AIRTABLE_BASE_ID",
+          "mode": "id"
+        },
+        "table": {
+          "__rl": true,
+          "value": "CompIntelLeads",
+          "mode": "name",
+          "cachedResultName": "CompIntelLeads"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Source": "competitive_intel",
+            "Payload": "={{ JSON.stringify($json).slice(0,100000) }}"
+          },
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "ci-airtable-save",
+      "name": "Airtable — Save Comp Lead",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [1220, 320]
+    }
+  ],
+  "connections": {
+    "Schedule — Competitor Scan": {
+      "main": [[{ "node": "Airtable — Load Competitors", "type": "main", "index": 0 }]]
+    },
+    "Airtable — Load Competitors": {
+      "main": [[{ "node": "HTTP — Search Complaints (Reddit)", "type": "main", "index": 0 }]]
+    },
+    "HTTP — Search Complaints (Reddit)": {
+      "main": [[{ "node": "HTTP — Comp Sentiment (OpenAI)", "type": "main", "index": 0 }]]
+    },
+    "HTTP — Comp Sentiment (OpenAI)": {
+      "main": [[{ "node": "Code — Parse Opportunity Score", "type": "main", "index": 0 }]]
+    },
+    "Code — Parse Opportunity Score": {
+      "main": [[{ "node": "IF — Is Opportunity?", "type": "main", "index": 0 }]]
+    },
+    "IF — Is Opportunity?": {
+      "main": [
+        [{ "node": "Airtable — Save Comp Lead", "type": "main", "index": 0 }],
+        []
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": { "executionOrder": "v1" },
+  "meta": {
+    "description": "Расписание → конкуренты из Airtable → жалобы Reddit → OpenAI → порог switching_intent → лид в CompIntel."
+  }
+}

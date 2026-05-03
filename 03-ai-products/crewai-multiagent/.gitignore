@@ -1,0 +1,24 @@
+# Environment and secrets
+.env
+
+# Virtual environment
+venv/
+.venv/
+env/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.Python
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# Результаты и логи выполнения Crew
+results/
+logs/
+
+# Docker
+.docker/

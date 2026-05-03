@@ -1,0 +1,19 @@
+# Для продакшена на сервере: только образ из GHCR (без build-контекста).
+# Скопируйте этот файл на сервер в DEPLOY_PATH вместе с .env.
+# Переменная APP_IMAGE задаётся в CI при деплое или вручную, например:
+#   ghcr.io/kaluginvit72/svo_viplaty:latest
+
+services:
+  bot:
+    image: ${APP_IMAGE}
+    container_name: svo-viplaty-bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: sqlite:////data/leads.db
+    volumes:
+      - bot-data:/data
+
+volumes:
+  bot-data:

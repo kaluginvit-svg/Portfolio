@@ -1,0 +1,6 @@
+haystack-ai
+haystack-integrations
+pinecone
+pyTelegramBotAPI
+python-dotenv
+pytest

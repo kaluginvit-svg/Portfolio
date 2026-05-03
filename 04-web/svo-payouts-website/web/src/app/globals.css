@@ -1,0 +1,484 @@
+@import "tailwindcss";
+
+html {
+  overflow-x: clip;
+  scrollbar-gutter: stable;
+}
+
+/*
+  Дизайн-спецификация: патриотически-сдержанный, государственно-доверительный UI.
+  Палитра зафиксирована; без teal/SaaS-акцентов.
+*/
+:root {
+  --primary-navy: #0b1f3a;
+  --deep-blue: #163a63;
+  --accent-red: #b3262e;
+  --cool-border: #d9e2ec;
+  --main-bg: #f5f7fa;
+  --card-bg: #ffffff;
+  --text-primary: #111827;
+  --text-secondary: #4b5563;
+  --section-bg: #e8eef5;
+  --soft-red-bg: #fff5f5;
+  --soft-blue-bg: #eef4ff;
+  --neutral-surface: #f8fafc;
+  --light-blue-divider: #dce7f3;
+  --status-confirmed: #0f766e;
+  --status-warning: #d97706;
+  --status-alert: #b91c1c;
+  --status-info: #2563eb;
+
+  --background: var(--main-bg);
+  --foreground: var(--text-primary);
+  --card: var(--card-bg);
+  --card-foreground: var(--text-primary);
+  --popover: var(--card-bg);
+  --popover-foreground: var(--text-primary);
+  --primary: var(--deep-blue);
+  --primary-foreground: #ffffff;
+  --secondary: var(--neutral-surface);
+  --secondary-foreground: var(--text-primary);
+  --muted: var(--section-bg);
+  --muted-foreground: var(--text-secondary);
+  --accent: var(--soft-blue-bg);
+  --accent-foreground: var(--text-primary);
+  --destructive: var(--status-alert);
+  --border: var(--cool-border);
+  --input: #cbd5e1;
+  --ring: var(--deep-blue);
+  --radius: 1.25rem;
+  --shadow-spec-card: 0 10px 30px rgba(11, 31, 58, 0.08);
+  --shadow-spec-quiz: 0 18px 50px rgba(15, 39, 71, 0.08);
+  --shadow-spec-highlight: 0 20px 50px rgba(11, 31, 58, 0.1);
+  --shadow-spec-form: 0 14px 40px rgba(11, 31, 58, 0.08);
+  --icon-stroke: 1.875px;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-primary-navy: var(--primary-navy);
+  --color-deep-blue: var(--deep-blue);
+  --color-accent-red: var(--accent-red);
+  --color-section-bg: var(--section-bg);
+  --color-neutral-surface: var(--neutral-surface);
+  --color-soft-red-bg: var(--soft-red-bg);
+  --color-soft-blue-bg: var(--soft-blue-bg);
+  --color-light-blue-divider: var(--light-blue-divider);
+  --color-status-confirmed: var(--status-confirmed);
+  --color-status-warning: var(--status-warning);
+  --color-status-info: var(--status-info);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: 1.5rem;
+  --font-sans: var(--font-onest), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-pt-serif), ui-serif, Georgia, serif;
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+}
+
+@keyframes accordion-down {
+  from {
+    height: 0;
+  }
+  to {
+    height: var(--radix-accordion-content-height);
+  }
+}
+
+@keyframes accordion-up {
+  from {
+    height: var(--radix-accordion-content-height);
+  }
+  to {
+    height: 0;
+  }
+}
+
+@keyframes hero-blob-drift {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.55;
+  }
+  50% {
+    transform: translate(2%, -1.5%) scale(1.04);
+    opacity: 0.62;
+  }
+}
+
+@keyframes hero-line-fade {
+  0%,
+  100% {
+    opacity: 0.04;
+  }
+  50% {
+    opacity: 0.09;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  line-height: 1.6;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: clip;
+  padding-inline: env(safe-area-inset-left) env(safe-area-inset-right);
+}
+
+@media (max-width: 480px) {
+  body {
+    -webkit-text-size-adjust: 100%;
+  }
+}
+
+::selection {
+  background: color-mix(in srgb, var(--deep-blue) 18%, transparent);
+}
+
+:focus-visible {
+  outline: none;
+}
+
+/* —— Hero (спецификация) —— */
+.ds-hero-spec {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, #0b1f3a 0%, #163a63 100%);
+  border-color: color-mix(in srgb, var(--deep-blue) 35%, transparent);
+}
+
+.ds-hero-spec::before {
+  content: "";
+  position: absolute;
+  inset: -20%;
+  background: radial-gradient(
+    circle at 30% 20%,
+    rgb(255 255 255 / 0.14) 0%,
+    transparent 42%
+  );
+  pointer-events: none;
+  animation: hero-blob-drift 16s ease-in-out infinite;
+}
+
+.ds-hero-spec::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -15%;
+  height: 55%;
+  background: radial-gradient(
+    ellipse 90% 60% at 50% 100%,
+    rgb(179 38 46 / 0.12) 0%,
+    transparent 58%
+  );
+  pointer-events: none;
+}
+
+.ds-hero-spec-lines {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 1;
+}
+
+.ds-hero-spec-lines span {
+  position: absolute;
+  width: 140%;
+  height: 1px;
+  left: -20%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgb(255 255 255 / 0.12),
+    transparent
+  );
+  animation: hero-line-fade 14s ease-in-out infinite;
+}
+
+.ds-hero-spec-lines span:nth-child(1) {
+  top: 22%;
+  transform: rotate(-18deg);
+}
+
+.ds-hero-spec-lines span:nth-child(2) {
+  top: 48%;
+  transform: rotate(-14deg);
+  animation-delay: -4s;
+}
+
+.ds-hero-spec-lines span:nth-child(3) {
+  top: 72%;
+  transform: rotate(-11deg);
+  animation-delay: -8s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ds-hero-spec::before,
+  .ds-hero-spec-lines span {
+    animation: none !important;
+  }
+}
+
+/* Секции: вертикальные отступы */
+.ds-section-y {
+  padding-top: 3.5rem;
+  padding-bottom: 3.5rem;
+}
+
+@media (min-width: 768px) {
+  .ds-section-y {
+    padding-top: 5.5rem;
+    padding-bottom: 5.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .ds-section-y {
+    padding-top: 6.5rem;
+    padding-bottom: 6.5rem;
+  }
+}
+
+.ds-section-gap {
+  margin-bottom: 4.5rem;
+}
+
+@media (min-width: 1024px) {
+  .ds-section-gap {
+    margin-bottom: 5.5rem;
+  }
+}
+
+/* Типографика иерархия */
+.ds-h2 {
+  font-family: var(--font-serif);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  color: var(--text-primary);
+  font-size: clamp(1.5rem, 3.2vw, 2.5rem);
+}
+
+.ds-h3 {
+  font-family: var(--font-serif);
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  line-height: 1.25;
+  color: var(--text-primary);
+  font-size: clamp(1.25rem, 2vw, 1.625rem);
+}
+
+.ds-body {
+  font-size: 1rem;
+  line-height: 1.65;
+  color: var(--text-secondary);
+}
+
+@media (min-width: 768px) {
+  .ds-body {
+    font-size: 1.125rem;
+  }
+}
+
+.ds-small {
+  font-size: 0.875rem;
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+
+.ds-section-kicker {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.ds-hero-spec .ds-section-kicker {
+  color: rgb(255 255 255 / 0.72);
+}
+
+/* Карточки спецификации */
+.ds-spec-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 20px;
+  border: 1px solid var(--cool-border);
+  background: var(--card-bg);
+  box-shadow: var(--shadow-spec-card);
+  padding: 1.25rem;
+}
+
+@media (min-width: 768px) {
+  .ds-spec-card {
+    padding: 1.5rem;
+  }
+}
+
+.ds-spec-card-hover {
+  transition:
+    transform 0.25s ease,
+    box-shadow 0.25s ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ds-spec-card-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 14px 36px rgba(11, 31, 58, 0.12);
+  }
+}
+
+.ds-card-strip::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  border-radius: 20px 20px 0 0;
+}
+
+.ds-card-strip--federal::before {
+  background: #163a63;
+}
+
+.ds-card-strip--monthly::before {
+  background: #2563eb;
+}
+
+.ds-card-strip--regional::before {
+  background: #b3262e;
+}
+
+.ds-card-strip--review::before {
+  background: #d97706;
+}
+
+/* Статус-бейджи */
+.ds-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 9999px;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.ds-badge-confirmed {
+  background: #ecfdf5;
+  color: var(--status-confirmed);
+}
+
+.ds-badge-partial {
+  background: #fffbeb;
+  color: #92400e;
+}
+
+.ds-badge-review {
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+.ds-badge-info {
+  background: #eff6ff;
+  color: #1e40af;
+}
+
+/* Квиз-оболочка */
+.ds-quiz-card {
+  width: 100%;
+  max-width: 860px;
+  margin-left: auto;
+  margin-right: auto;
+  border-radius: 24px;
+  border: 1px solid var(--light-blue-divider);
+  background: var(--card-bg);
+  box-shadow: var(--shadow-spec-quiz);
+}
+
+/* Результат: highlight */
+.ds-result-highlight {
+  border-radius: 28px;
+  border: 1px solid var(--light-blue-divider);
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  box-shadow: var(--shadow-spec-highlight);
+}
+
+/* Аналитический модуль (статус-линия слева) */
+.ds-analytic-module {
+  position: relative;
+  border-radius: 20px;
+  border: 1px solid var(--cool-border);
+  background: var(--card-bg);
+  box-shadow: var(--shadow-spec-card);
+  padding: 1.25rem 1.25rem 1.25rem 1.35rem;
+}
+
+@media (min-width: 768px) {
+  .ds-analytic-module {
+    padding: 1.5rem 1.5rem 1.5rem 1.6rem;
+  }
+}
+
+.ds-analytic-module::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 1rem;
+  bottom: 1rem;
+  width: 3px;
+  border-radius: 9999px;
+  background: linear-gradient(180deg, var(--deep-blue) 0%, var(--light-blue-divider) 100%);
+}
+
+/* Региональный модуль */
+.ds-regional-surface {
+  background: #fff8f8;
+  border: 1px solid color-mix(in srgb, var(--accent-red) 22%, var(--cool-border));
+  border-radius: 24px;
+  box-shadow: var(--shadow-spec-card);
+}
+
+/* Цена ожидания */
+.ds-delay-card {
+  background: var(--soft-red-bg);
+  border: 1px solid #f3d1d1;
+  border-radius: 20px;
+  box-shadow: 0 8px 24px rgba(11, 31, 58, 0.06);
+}
+
+/* Прогресс-квиз (трек) */
+.ds-quiz-progress-track {
+  height: 8px;
+  border-radius: 9999px;
+  background: var(--section-bg);
+  overflow: hidden;
+}
+
+/* Единый stroke иконок на лендинге */
+.ds-icon {
+  stroke-width: var(--icon-stroke);
+}

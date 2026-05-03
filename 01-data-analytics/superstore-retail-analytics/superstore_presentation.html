@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="slides-format" content="viewport">
+    <title>Sample Superstore — Аналитика продаж</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/motion@12/dist/motion.js"></script>
+
+    <style type="text/tailwindcss">
+        @theme {
+            --color-bg: #0a0f1e;
+            --color-bg-deep: #060a14;
+            --color-surface: #1a2236;
+            --color-text: #f1f5f9;
+            --color-text-secondary: #cbd5e1;
+            --color-text-muted: #94a3b8;
+            --color-accent-1: #3B82F6;
+            --color-accent-2: #06B6D4;
+            --color-accent-3: #F59E0B;
+            --color-glass-bg: rgba(255,255,255,0.05);
+            --color-glass-border: rgba(255,255,255,0.08);
+            --color-vignette: rgba(0,0,0,0.4);
+            --font-display: 'Playfair Display', Georgia, serif;
+            --font-body: 'DM Sans', system-ui, sans-serif;
+        }
+    </style>
+
+    <style>
+        :root { --color-bg: #0a0f1e; --color-text: #f1f5f9; --glow-color-rgb: 59,130,246; }
+        *, *::before, *::after { box-sizing: border-box; }
+        html, body { background: var(--color-bg); margin: 0; }
+        body { font-family: var(--font-body); color: var(--color-text); overflow: hidden; height: 100vh; width: 100vw; }
+        .deck { width: 100vw; height: 100vh; position: relative; }
+        .slide { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: var(--color-bg); display: flex; flex-direction: column; align-items: center; justify-content: center; opacity: 0; transform: scale(0.95); transition: opacity 0.7s ease, transform 0.7s ease; pointer-events: none; overflow: hidden; }
+        .slide-1 { background: linear-gradient(rgba(10,15,30,0.72), rgba(6,10,20,0.85)), url('title-bg.png') center/cover no-repeat; }
+        .slide.active { opacity: 1; transform: scale(1); pointer-events: all; }
+        .slide > .content { position: relative; z-index: 2; width: 100%; max-width: 1100px; padding: clamp(1.5rem, 4vw, 4rem); }
+        .nav-controls { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 16px; z-index: 100; background: var(--color-glass-bg); backdrop-filter: blur(10px); padding: 10px 24px; border-radius: 40px; border: 1px solid var(--color-glass-border); }
+        .nav-btn { width: 40px; height: 40px; border: none; background: var(--color-glass-bg); color: var(--color-accent-1); border-radius: 50%; font-size: 1.2rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.3s; }
+        .nav-btn:hover { background: var(--color-glass-border); }
+        .slide-dots { display: flex; gap: 8px; }
+        .slide-dots .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--color-glass-border); cursor: pointer; transition: background 0.3s, transform 0.3s; }
+        .slide-dots .dot.active { background: var(--color-accent-1); transform: scale(1.3); }
+        .slide-counter { font-size: 0.8rem; color: var(--color-text-muted); min-width: 40px; text-align: center; }
+        .reveal { opacity: 0; transform: translateY(20px); }
+        .text-glow { text-shadow: 0 0 20px rgba(var(--glow-color-rgb), 0.5), 0 0 40px rgba(var(--glow-color-rgb), 0.2); }
+        .stat-glow { text-shadow: 0 0 30px rgba(var(--glow-color-rgb), 0.6), 0 0 60px rgba(var(--glow-color-rgb), 0.25); }
+        @keyframes glow-pulse { 0%, 100% { text-shadow: 0 0 20px rgba(var(--glow-color-rgb), 0.5), 0 0 40px rgba(var(--glow-color-rgb), 0.2); } 50% { text-shadow: 0 0 30px rgba(var(--glow-color-rgb), 0.8), 0 0 60px rgba(var(--glow-color-rgb), 0.3); } }
+        .glow-pulse { animation: glow-pulse 3s ease-in-out infinite; }
+        @keyframes float-slow { 0% { transform: translate(0, 0) scale(1); } 25% { transform: translate(60px, -50px) scale(1.12); } 50% { transform: translate(-40px, 40px) scale(0.9); } 75% { transform: translate(50px, 20px) scale(1.08); } 100% { transform: translate(0, 0) scale(1); } }
+        @keyframes float-drift { 0% { transform: translate(0, 0) scale(1) rotate(0deg); } 33% { transform: translate(-50px, -60px) scale(1.15) rotate(3deg); } 66% { transform: translate(40px, 30px) scale(0.88) rotate(-2deg); } 100% { transform: translate(0, 0) scale(1) rotate(0deg); } }
+        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-15px); } }
+        .gradient-mesh { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+        .blob { position: absolute; border-radius: 50%; filter: blur(80px); animation: float-slow 10s ease-in-out infinite; }
+        .blob:nth-child(2) { animation: float-drift 14s ease-in-out infinite; }
+        .blob:nth-child(3) { animation: float-slow 18s ease-in-out infinite reverse; }
+        .slide::before { content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E"); background-repeat: repeat; background-size: 256px 256px; opacity: 0.03; mix-blend-mode: overlay; }
+        .slide::after { content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none; background: radial-gradient(ellipse at center, transparent 50%, var(--color-vignette) 100%); }
+        .bar-fill { height: 100%; border-radius: 6px; transition: width 1.5s cubic-bezier(0.16, 1, 0.3, 1); width: 0; }
+        @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.2s !important; } }
+    </style>
+</head>
+<body>
+
+<div class="mouse-spotlight" style="position:fixed;inset:0;z-index:99;pointer-events:none;"></div>
+
+<div class="deck">
+
+    <!-- SLIDE 1: TITLE -->
+    <div class="slide slide-1 active" data-slide="1">
+        <div class="gradient-mesh">
+            <div class="blob" style="width:500px;height:500px;top:-100px;right:-100px;background:var(--color-accent-1);opacity:0.15;"></div>
+            <div class="blob" style="width:300px;height:300px;bottom:-80px;left:-60px;background:var(--color-accent-2);opacity:0.12;"></div>
+            <div class="blob" style="width:200px;height:200px;top:40%;left:15%;background:var(--color-accent-3);opacity:0.1;"></div>
+        </div>
+        <canvas class="particle-canvas" style="position:absolute;inset:0;z-index:1;"></canvas>
+        <div class="content text-center">
+            <div class="text-[120px] mb-5 animate-[float_3s_ease-in-out_infinite]">📊</div>
+            <h1 class="font-display text-[clamp(2.2rem,5vw,4.2rem)] font-black bg-linear-to-br from-accent-1 via-accent-2 to-accent-1 bg-clip-text text-transparent tracking-tight mb-4 reveal">Sample Superstore</h1>
+            <p class="text-[clamp(0.9rem,1.5vw,1.4rem)] font-light text-text-muted tracking-[6px] uppercase reveal">Аналитика продаж и прибыльности</p>
+            <p class="text-text-muted text-sm mt-6 reveal">9 994 позиции · 5 009 заказов · 4 года данных (2014–2017)</p>
+        </div>
+    </div>
+
+    <!-- SLIDE 2: КОНТЕКСТ И ЗАДАЧА -->
+    <div class="slide slide-2" data-slide="2">
+        <div class="gradient-mesh">
+            <div class="blob" style="width:350px;height:350px;top:-80px;right:-80px;background:var(--color-accent-1);opacity:0.08;"></div>
+            <div class="blob" style="width:250px;height:250px;bottom:-60px;left:-40px;background:var(--color-accent-2);opacity:0.06;"></div>
+        </div>
+        <div class="content">
+            <p class="uppercase tracking-[0.12em] text-accent-2 text-sm mb-2 reveal">Слайд 1 из 9</p>
+            <h2 class="font-display text-[clamp(1.8rem,4vw,2.8rem)] font-bold mb-6 reveal">Контекст и задача</h2>
+            <div class="grid grid-cols-2 gap-6">
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-6 hover:-translate-y-1 transition reveal">
+                    <p class="text-accent-3 text-2xl mb-2">🎯</p>
+                    <h3 class="font-bold text-lg mb-2">Цель анализа</h3>
+                    <p class="text-text-secondary text-sm">Выявить драйверы прибыли и убыточные направления в розничной сети Superstore (США). Найти точки роста и проблемные зоны.</p>
+                </div>
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-6 hover:-translate-y-1 transition reveal">
+                    <p class="text-accent-3 text-2xl mb-2">👤</p>
+                    <h3 class="font-bold text-lg mb-2">Для кого</h3>
+                    <p class="text-text-secondary text-sm">Руководитель категорийного менеджмента. Нужны конкретные рекомендации по ассортименту, скидкам и региональной стратегии.</p>
+                </div>
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-6 hover:-translate-y-1 transition reveal">
+                    <p class="text-accent-3 text-2xl mb-2">📦</p>
+                    <h3 class="font-bold text-lg mb-2">Данные</h3>
+                    <p class="text-text-secondary text-sm">Sample Superstore: 9 994 строки, 21 колонка. Период: январь 2014 — декабрь 2017. Покрытие: 49 штатов, 4 региона.</p>
+                </div>
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-6 hover:-translate-y-1 transition reveal">
+                    <p class="text-accent-3 text-2xl mb-2">🤖</p>
+                    <h3 class="font-bold text-lg mb-2">Роль ИИ</h3>
+                    <p class="text-text-secondary text-sm">ИИ использован для генерации кода EDA (Python + Pandas), автосоздания визуализаций и формулировки гипотез по данным.</p>
+                    <p class="text-text-muted text-xs mt-2">Примеры промптов: «Сделай EDA по этим данным», «Построй графики по скидкам и марже», «Сформулируй 3–5 ключевых инсайтов для руководителя».</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 3: КЛЮЧЕВЫЕ МЕТРИКИ -->
+    <div class="slide slide-3" data-slide="3">
+        <div class="gradient-mesh">
+            <div class="blob" style="width:400px;height:400px;top:-60px;left:-60px;background:var(--color-accent-2);opacity:0.1;"></div>
+            <div class="blob" style="width:280px;height:280px;bottom:-50px;right:-50px;background:var(--color-accent-1);opacity:0.08;"></div>
+        </div>
+        <div class="content">
+            <p class="uppercase tracking-[0.12em] text-accent-2 text-sm mb-2 reveal">Слайд 2 из 9</p>
+            <h2 class="font-display text-[clamp(1.8rem,4vw,2.8rem)] font-bold mb-6 reveal">Ключевые метрики</h2>
+            <div class="grid grid-cols-4 gap-5">
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-5 text-center hover:-translate-y-1 transition reveal">
+                    <p class="text-3xl mb-1">💰</p>
+                    <p class="text-accent-1 text-2xl font-bold glow-pulse" data-count="2297201" data-prefix="$">$2,297,201</p>
+                    <p class="text-text-muted text-xs uppercase tracking-wider mt-1">Выручка</p>
+                </div>
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-5 text-center hover:-translate-y-1 transition reveal">
+                    <p class="text-3xl mb-1">📈</p>
+                    <p class="text-accent-2 text-2xl font-bold glow-pulse">$286,397</p>
+                    <p class="text-text-muted text-xs uppercase tracking-wider mt-1">Прибыль</p>
+                </div>
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-5 text-center hover:-translate-y-1 transition reveal">
+                    <p class="text-3xl mb-1">📊</p>
+                    <p class="text-accent-3 text-2xl font-bold glow-pulse">12.5%</p>
+                    <p class="text-text-muted text-xs uppercase tracking-wider mt-1">Маржа</p>
+                </div>
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-5 text-center hover:-translate-y-1 transition reveal">
+                    <p class="text-3xl mb-1">⚠️</p>
+                    <p class="text-red-400 text-2xl font-bold glow-pulse">1,871</p>
+                    <p class="text-text-muted text-xs uppercase tracking-wider mt-1">Убыточных позиций</p>
+                </div>
+            </div>
+            <div class="grid grid-cols-3 gap-5 mt-5">
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-4 text-center reveal">
+                    <p class="text-accent-1 text-xl font-bold">5,009</p>
+                    <p class="text-text-muted text-xs">Уникальных заказов</p>
+                </div>
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-4 text-center reveal">
+                    <p class="text-accent-2 text-xl font-bold">793</p>
+                    <p class="text-text-muted text-xs">Клиентов</p>
+                </div>
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-4 text-center reveal">
+                    <p class="text-accent-3 text-xl font-bold">$458.61</p>
+                    <p class="text-text-muted text-xs">Средний чек</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 4: ДАШБОРД -->
+    <div class="slide slide-4" data-slide="4">
+        <div class="gradient-mesh">
+            <div class="blob" style="width:350px;height:350px;top:-80px;right:-80px;background:var(--color-accent-3);opacity:0.08;"></div>
+            <div class="blob" style="width:250px;height:250px;bottom:-60px;left:-40px;background:var(--color-accent-1);opacity:0.06;"></div>
+        </div>
+        <div class="content">
+            <p class="uppercase tracking-[0.12em] text-accent-2 text-sm mb-2 reveal">Слайд 3 из 9</p>
+            <h2 class="font-display text-[clamp(1.8rem,4vw,2.8rem)] font-bold mb-4 reveal">Дашборд: как устроен</h2>
+            <p class="text-text-secondary mb-6 reveal">Интерактивный HTML-дашборд с фильтрами по региону, категории и периоду. Все данные обновляются автоматически при изменении фильтров.</p>
+            <div class="grid grid-cols-3 gap-5">
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-5 hover:-translate-y-1 transition reveal">
+                    <p class="text-2xl mb-2">🔍</p>
+                    <h3 class="font-bold mb-1">Фильтры</h3>
+                    <p class="text-text-secondary text-sm">Регион, категория, временной период — интерактивный выбор</p>
+                </div>
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-5 hover:-translate-y-1 transition reveal">
+                    <p class="text-2xl mb-2">📊</p>
+                    <h3 class="font-bold mb-1">Визуализации</h3>
+                    <p class="text-text-secondary text-sm">13 графиков: динамика, категории, регионы, скидки, сегменты</p>
+                </div>
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-5 hover:-translate-y-1 transition reveal">
+                    <p class="text-2xl mb-2">📋</p>
+                    <h3 class="font-bold mb-1">Сводные таблицы</h3>
+                    <p class="text-text-secondary text-sm">Кросс-анализ: регион × категория, маржа по скидкам, топ-товары</p>
+                </div>
+            </div>
+            <div class="mt-5 bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-4 text-center reveal">
+                <p class="text-text-muted text-sm">🔗 <a href="superstore-dashboard.html" target="_blank" style="color:var(--color-accent-1);text-decoration:underline;font-weight:600;">Открыть дашборд →</a> <span style="opacity:0.6">(файл superstore-dashboard.html должен лежать рядом)</span></p>
+                <p class="text-text-muted text-xs mt-2">ДО → ПОСЛЕ: было — сырая таблица 9 994 строк в Excel; стало — один интерактивный дашборд, который отвечает на ключевые вопросы за 1–2 минуты.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 5: КАТЕГОРИИ И ПРИБЫЛЬНОСТЬ -->
+    <div class="slide slide-5" data-slide="5">
+        <div class="gradient-mesh">
+            <div class="blob" style="width:300px;height:300px;top:-70px;left:20%;background:var(--color-accent-1);opacity:0.08;"></div>
+            <div class="blob" style="width:250px;height:250px;bottom:-50px;right:10%;background:var(--color-accent-3);opacity:0.07;"></div>
+        </div>
+        <div class="content">
+            <p class="uppercase tracking-[0.12em] text-accent-2 text-sm mb-2 reveal">Слайд 4 из 9 · Ключевой вывод</p>
+            <h2 class="font-display text-[clamp(1.8rem,4vw,2.8rem)] font-bold mb-6 reveal">Категории: прибыль ≠ выручка</h2>
+            <div class="grid grid-cols-3 gap-5 mb-6">
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-5 border-l-4 border-l-green-400 hover:-translate-y-1 transition reveal">
+                    <h3 class="font-bold text-green-400 mb-1">Technology</h3>
+                    <p class="text-2xl font-bold text-text">$836K</p>
+                    <p class="text-text-muted text-xs">36% выручки → <span class="text-green-400 font-bold">51% прибыли</span></p>
+                    <p class="text-text-muted text-xs mt-1">Маржа: 17.4%</p>
+                </div>
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-5 border-l-4 border-l-blue-400 hover:-translate-y-1 transition reveal">
+                    <h3 class="font-bold text-blue-400 mb-1">Office Supplies</h3>
+                    <p class="text-2xl font-bold text-text">$719K</p>
+                    <p class="text-text-muted text-xs">31% выручки → <span class="text-blue-400 font-bold">43% прибыли</span></p>
+                    <p class="text-text-muted text-xs mt-1">Маржа: 17.0%</p>
+                </div>
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-5 border-l-4 border-l-red-400 hover:-translate-y-1 transition reveal">
+                    <h3 class="font-bold text-red-400 mb-1">Furniture</h3>
+                    <p class="text-2xl font-bold text-text">$742K</p>
+                    <p class="text-text-muted text-xs">32% выручки → <span class="text-red-400 font-bold">только 6% прибыли</span></p>
+                    <p class="text-text-muted text-xs mt-1">Маржа: 2.5% ⚠️</p>
+                </div>
+            </div>
+            <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-4 reveal">
+                <p class="text-text-secondary text-sm"><span class="text-accent-3 font-bold">Инсайт:</span> Furniture генерирует 32% выручки, но лишь 6% прибыли. Три подкатегории убыточны: Tables (−$17 725), Bookcases (−$3 473), Supplies (−$1 189).</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 6: СКИДКИ УНИЧТОЖАЮТ ПРИБЫЛЬ -->
+    <div class="slide slide-6" data-slide="6">
+        <div class="gradient-mesh">
+            <div class="blob" style="width:350px;height:350px;top:-80px;right:-50px;background:var(--color-accent-3);opacity:0.1;"></div>
+            <div class="blob" style="width:250px;height:250px;bottom:-60px;left:10%;background:var(--color-accent-1);opacity:0.06;"></div>
+        </div>
+        <div class="content">
+            <p class="uppercase tracking-[0.12em] text-accent-2 text-sm mb-2 reveal">Слайд 5 из 9 · Ключевой вывод</p>
+            <h2 class="font-display text-[clamp(1.8rem,4vw,2.8rem)] font-bold mb-6 reveal">Скидки > 20% уничтожают прибыль</h2>
+            <div class="space-y-4">
+                <div class="reveal">
+                    <div class="flex items-center gap-3 mb-1"><span class="text-sm text-text-muted w-16">0–20%</span><div style="flex:1;height:28px;background:var(--color-glass-bg);border-radius:6px;overflow:hidden;border:1px solid var(--color-glass-border);"><div class="bar-fill" data-width="80" style="background:linear-gradient(90deg,#22c55e,#4ade80);width:80%;"></div></div><span class="text-green-400 font-bold text-sm w-20 text-right">+26.7%</span></div>
+                </div>
+                <div class="reveal">
+                    <div class="flex items-center gap-3 mb-1"><span class="text-sm text-text-muted w-16">20–40%</span><div style="flex:1;height:28px;background:var(--color-glass-bg);border-radius:6px;overflow:hidden;border:1px solid var(--color-glass-border);"><div class="bar-fill" data-width="35" style="background:linear-gradient(90deg,#ef4444,#f87171);width:35%;"></div></div><span class="text-red-400 font-bold text-sm w-20 text-right">−16.7%</span></div>
+                </div>
+                <div class="reveal">
+                    <div class="flex items-center gap-3 mb-1"><span class="text-sm text-text-muted w-16">40–60%</span><div style="flex:1;height:28px;background:var(--color-glass-bg);border-radius:6px;overflow:hidden;border:1px solid var(--color-glass-border);"><div class="bar-fill" data-width="75" style="background:linear-gradient(90deg,#ef4444,#dc2626);width:75%;"></div></div><span class="text-red-400 font-bold text-sm w-20 text-right">−63.4%</span></div>
+                </div>
+                <div class="reveal">
+                    <div class="flex items-center gap-3 mb-1"><span class="text-sm text-text-muted w-16">60–80%</span><div style="flex:1;height:28px;background:var(--color-glass-bg);border-radius:6px;overflow:hidden;border:1px solid var(--color-glass-border);"><div class="bar-fill" data-width="95" style="background:linear-gradient(90deg,#dc2626,#991b1b);width:95%;"></div></div><span class="text-red-400 font-bold text-sm w-20 text-right">−122.5%</span></div>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-5 mt-6">
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-4 border-l-4 border-l-red-500 reveal">
+                    <p class="text-red-400 font-bold text-sm">Tables: скидка 26.1%</p>
+                    <p class="text-text-muted text-xs">Убыток −$17 725. Каждый второй заказ в минус.</p>
+                </div>
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-4 border-l-4 border-l-red-500 reveal">
+                    <p class="text-red-400 font-bold text-sm">Bookcases: скидка 21.1%</p>
+                    <p class="text-text-muted text-xs">Убыток −$3 473. Превышен порог окупаемости скидок.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 7: РЕГИОНЫ -->
+    <div class="slide slide-7" data-slide="7">
+        <div class="gradient-mesh">
+            <div class="blob" style="width:350px;height:350px;top:-70px;left:-60px;background:var(--color-accent-2);opacity:0.09;"></div>
+            <div class="blob" style="width:280px;height:280px;bottom:-50px;right:-40px;background:var(--color-accent-1);opacity:0.07;"></div>
+        </div>
+        <div class="content">
+            <p class="uppercase tracking-[0.12em] text-accent-2 text-sm mb-2 reveal">Слайд 6 из 9 · Ключевой вывод</p>
+            <h2 class="font-display text-[clamp(1.8rem,4vw,2.8rem)] font-bold mb-6 reveal">Регионы: разрыв маржи в 2 раза</h2>
+            <div class="grid grid-cols-4 gap-4">
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-5 text-center border-t-4 border-t-green-400 hover:-translate-y-1 transition reveal">
+                    <p class="text-text-muted text-xs uppercase tracking-wider mb-2">West</p>
+                    <p class="text-green-400 text-3xl font-bold glow-pulse">14.9%</p>
+                    <p class="text-text-secondary text-sm mt-1">$725K продаж</p>
+                    <p class="text-text-muted text-xs">$108K прибыли</p>
+                </div>
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-5 text-center border-t-4 border-t-blue-400 hover:-translate-y-1 transition reveal">
+                    <p class="text-text-muted text-xs uppercase tracking-wider mb-2">East</p>
+                    <p class="text-blue-400 text-3xl font-bold">13.5%</p>
+                    <p class="text-text-secondary text-sm mt-1">$679K продаж</p>
+                    <p class="text-text-muted text-xs">$92K прибыли</p>
+                </div>
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-5 text-center border-t-4 border-t-yellow-400 hover:-translate-y-1 transition reveal">
+                    <p class="text-text-muted text-xs uppercase tracking-wider mb-2">South</p>
+                    <p class="text-yellow-400 text-3xl font-bold">11.9%</p>
+                    <p class="text-text-secondary text-sm mt-1">$392K продаж</p>
+                    <p class="text-text-muted text-xs">$47K прибыли</p>
+                </div>
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-5 text-center border-t-4 border-t-red-400 hover:-translate-y-1 transition reveal">
+                    <p class="text-text-muted text-xs uppercase tracking-wider mb-2">Central</p>
+                    <p class="text-red-400 text-3xl font-bold">7.9%</p>
+                    <p class="text-text-secondary text-sm mt-1">$501K продаж</p>
+                    <p class="text-text-muted text-xs">$40K прибыли</p>
+                </div>
+            </div>
+            <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-4 mt-5 reveal">
+                <p class="text-text-secondary text-sm"><span class="text-accent-3 font-bold">Инсайт:</span> Central при продажах $501K генерирует меньше прибыли ($40K), чем South с продажами $392K ($47K). Маржа Central вдвое ниже West.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 8: СЕГМЕНТЫ -->
+    <div class="slide slide-8" data-slide="8">
+        <div class="gradient-mesh">
+            <div class="blob" style="width:300px;height:300px;top:-60px;right:20%;background:var(--color-accent-1);opacity:0.08;"></div>
+            <div class="blob" style="width:220px;height:220px;bottom:-40px;left:15%;background:var(--color-accent-3);opacity:0.06;"></div>
+        </div>
+        <div class="content">
+            <p class="uppercase tracking-[0.12em] text-accent-2 text-sm mb-2 reveal">Слайд 7 из 9 · Ключевой вывод</p>
+            <h2 class="font-display text-[clamp(1.8rem,4vw,2.8rem)] font-bold mb-6 reveal">Сегменты и доставка</h2>
+            <div class="grid grid-cols-2 gap-6">
+                <div class="reveal">
+                    <h3 class="font-bold text-lg mb-3 text-accent-1">Клиентские сегменты</h3>
+                    <div class="space-y-3">
+                        <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-lg p-4">
+                            <div class="flex justify-between items-center"><span class="font-bold">Consumer</span><span class="text-accent-1">$1,161K</span></div>
+                            <p class="text-text-muted text-xs mt-1">51% заказов · прибыль $134K · маржа на позицию $25.84</p>
+                        </div>
+                        <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-lg p-4">
+                            <div class="flex justify-between items-center"><span class="font-bold">Corporate</span><span class="text-accent-2">$706K</span></div>
+                            <p class="text-text-muted text-xs mt-1">30% заказов · прибыль $92K · маржа на позицию $30.46</p>
+                        </div>
+                        <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-lg p-4">
+                            <div class="flex justify-between items-center"><span class="font-bold">Home Office</span><span class="text-accent-3">$430K</span></div>
+                            <p class="text-text-muted text-xs mt-1">18% заказов · прибыль $60K · <span class="text-green-400">макс. маржа $33.82</span></p>
+                        </div>
+                    </div>
+                </div>
+                <div class="reveal">
+                    <h3 class="font-bold text-lg mb-3 text-accent-1">Способы доставки</h3>
+                    <div class="space-y-3">
+                        <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-lg p-4">
+                            <div class="flex justify-between items-center"><span class="font-bold">Standard Class</span><span class="text-text-muted">5.0 дней</span></div>
+                            <p class="text-text-muted text-xs mt-1">60% всех заказов</p>
+                        </div>
+                        <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-lg p-4">
+                            <div class="flex justify-between items-center"><span class="font-bold">Second Class</span><span class="text-text-muted">3.2 дня</span></div>
+                            <p class="text-text-muted text-xs mt-1">19% заказов</p>
+                        </div>
+                        <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-lg p-4">
+                            <div class="flex justify-between items-center"><span class="font-bold">First Class</span><span class="text-text-muted">2.2 дня</span></div>
+                            <p class="text-text-muted text-xs mt-1">15% заказов</p>
+                        </div>
+                        <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-lg p-4">
+                            <div class="flex justify-between items-center"><span class="font-bold">Same Day</span><span class="text-green-400">0 дней</span></div>
+                            <p class="text-text-muted text-xs mt-1">5% заказов</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 9: КЛЮЧЕВЫЕ ВЫВОДЫ -->
+    <div class="slide slide-9" data-slide="9">
+        <div class="gradient-mesh">
+            <div class="blob" style="width:350px;height:350px;top:-80px;right:-60px;background:var(--color-accent-2);opacity:0.09;"></div>
+            <div class="blob" style="width:250px;height:250px;bottom:-60px;left:-30px;background:var(--color-accent-3);opacity:0.07;"></div>
+        </div>
+        <canvas class="particle-canvas" style="position:absolute;inset:0;z-index:1;"></canvas>
+        <div class="content">
+            <p class="uppercase tracking-[0.12em] text-accent-2 text-sm mb-2 reveal">
+                Слайд 8 из 9 · Ключевые выводы
+            </p>
+            <h2 class="font-display text-[clamp(1.8rem,4vw,2.8rem)] font-bold mb-6 reveal">
+                Ключевые выводы по данным
+            </h2>
+            <div class="space-y-4">
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-5 border-l-4 border-l-red-500 reveal">
+                    <h3 class="font-bold text-red-400 mb-1">1. Скидки > 20% уничтожают прибыль</h3>
+                    <p class="text-text-secondary text-sm">
+                        Без скидок маржа ~29.5%, при скидках 50%+ маржа падает до −119.2%.
+                        18.7% позиций убыточны — в основном из-за агрессивных промо.
+                    </p>
+                </div>
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-5 border-l-4 border-l-yellow-500 reveal">
+                    <h3 class="font-bold text-yellow-400 mb-1">2. Furniture даёт выручку, но тянет прибыль вниз</h3>
+                    <p class="text-text-secondary text-sm">
+                        ~32% выручки при марже около 6%. Подкатегории Tables (≈−$17 725)
+                        и Bookcases (≈−$3 473) формируют устойчивый минус по прибыли.
+                    </p>
+                </div>
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-5 border-l-4 border-l-blue-500 reveal">
+                    <h3 class="font-bold text-blue-400 mb-1">3. Регион Central недозарабатывает</h3>
+                    <p class="text-text-secondary text-sm">
+                        При продажах ~$501K прибыль всего ~$40K (маржа 7.9%) — почти вдвое
+                        ниже West (14.9%) при сопоставимом объёме продаж.
+                    </p>
+                </div>
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-5 border-l-4 border-l-green-500 reveal">
+                    <h3 class="font-bold text-green-400 mb-1">4. Technology — главный драйвер прибыли</h3>
+                    <p class="text-text-secondary text-sm">
+                        Маржа ~17.4%. Особенно выгодны Copiers (≈$56K прибыли) и Accessories
+                        (≈$42K) при относительно небольшом числе заказов.
+                    </p>
+                </div>
+                <div class="bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-5 border-l-4 border-l-accent-3 reveal">
+                    <h3 class="font-bold text-accent-3 mb-1">5. Home Office — самый эффективный сегмент</h3>
+                    <p class="text-text-secondary text-sm">
+                        При меньшей выручке сегмент даёт максимальную маржу на позицию
+                        (~$33.8 на заказ), опережая Consumer и Corporate.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 10: ИНТЕРПРЕТАЦИЯ И СМЫСЛ -->
+    <div class="slide slide-10" data-slide="10">
+        <div class="gradient-mesh">
+            <div class="blob" style="width:500px;height:500px;top:-100px;right:-100px;background:var(--color-accent-1);opacity:0.15;"></div>
+            <div class="blob" style="width:300px;height:300px;bottom:-80px;left:-60px;background:var(--color-accent-2);opacity:0.12;"></div>
+            <div class="blob" style="width:200px;height:200px;top:40%;left:15%;background:var(--color-accent-3);opacity:0.1;"></div>
+        </div>
+        <canvas class="particle-canvas" style="position:absolute;inset:0;z-index:1;"></canvas>
+        <div class="content">
+            <p class="uppercase tracking-[0.12em] text-accent-2 text-sm mb-2 reveal">
+                Слайд 9 из 9 · Смысл для бизнеса
+            </p>
+            <h2 class="font-display text-[clamp(1.8rem,4vw,2.8rem)] font-bold mb-6 reveal">
+                Что это значит для бизнеса
+            </h2>
+            <div class="space-y-4">
+                <div class="flex items-start gap-4 bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-5 hover:-translate-y-1 transition reveal">
+                    <span class="text-2xl">1️⃣</span>
+                    <div>
+                        <h3 class="font-bold text-red-400">Пересмотреть скидочную политику</h3>
+                        <p class="text-text-secondary text-sm">
+                            Глубокие скидки (>20%, особенно 50%+) превращают прибыль в убыток.
+                            Их стоит оставить как точечный инструмент (распродажи, спец‑кампании),
+                            а не как массовую практику.
+                        </p>
+                    </div>
+                </div>
+                <div class="flex items-start gap-4 bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-5 hover:-translate-y-1 transition reveal">
+                    <span class="text-2xl">2️⃣</span>
+                    <div>
+                        <h3 class="font-bold text-yellow-400">Очистить категорию Furniture</h3>
+                        <p class="text-text-secondary text-sm">
+                            Tables и Bookcases тянут категорию в минус. Нужен отдельный разбор:
+                            поднять цены, сократить глубокие скидки или пересобрать ассортимент,
+                            чтобы вывести Furniture в зону приемлемой маржи.
+                        </p>
+                    </div>
+                </div>
+                <div class="flex items-start gap-4 bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-5 hover:-translate-y-1 transition reveal">
+                    <span class="text-2xl">3️⃣</span>
+                    <div>
+                        <h3 class="font-bold text-blue-400">Разобрать регион Central как отдельный кейс</h3>
+                        <p class="text-text-secondary text-sm">
+                            Низкая маржа при нормальной выручке указывает либо на избыточные скидки,
+                            либо на дорогую логистику/закупку. Регион — приоритетный кандидат
+                            для P&L‑анализа и выравнивания маржи хотя бы до 12%.
+                        </p>
+                    </div>
+                </div>
+                <div class="flex items-start gap-4 bg-glass-bg backdrop-blur-xl border border-glass-border rounded-xl p-5 hover:-translate-y-1 transition reveal">
+                    <span class="text-2xl">4️⃣</span>
+                    <div>
+                        <h3 class="font-bold text-green-400">Масштабировать сильные стороны</h3>
+                        <p class="text-text-secondary text-sm">
+                            Technology (особенно Copiers и Accessories) и сегмент Home Office —
+                            готовые точки роста. Логичный следующий шаг — усилить маркетинг и
+                            расширить ассортимент именно в этих зонах.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <p class="text-center text-text-muted text-sm mt-6 reveal">
+                Спасибо за внимание · Дашборд и данные прилагаются
+            </p>
+        </div>
+    </div>
+</div>
+
+</div>
+
+<!-- NAVIGATION -->
+<div class="nav-controls">
+    <button class="nav-btn" onclick="changeSlide(-1)">&#8249;</button>
+    <div class="slide-dots" id="dots"></div>
+    <button class="nav-btn" onclick="changeSlide(1)">&#8250;</button>
+    <span class="slide-counter" id="counter">1 / 10</span>
+</div>
+
+<script>
+    let current = 1;
+    const total = document.querySelectorAll('.slide').length;
+    const dotsContainer = document.getElementById('dots');
+    const counter = document.getElementById('counter');
+    for (let i = 1; i <= total; i++) { const dot = document.createElement('div'); dot.className = 'dot' + (i === 1 ? ' active' : ''); dot.onclick = () => goToSlide(i); dotsContainer.appendChild(dot); }
+    function goToSlide(n) {
+        const prev = document.querySelector('.slide.active');
+        const next = document.querySelector(`.slide[data-slide="${n}"]`);
+        if (prev) prev.classList.remove('active');
+        if (next) { next.classList.add('active'); try { animateSlide(next); } catch(e) { console.warn('Motion unavailable:', e); } }
+        current = n; updateNav();
+    }
+    function changeSlide(dir) { let next = current + dir; if (next < 1) next = total; if (next > total) next = 1; goToSlide(next); }
+    function updateNav() { document.querySelectorAll('.dot').forEach((d, i) => { d.classList.toggle('active', i + 1 === current); }); counter.textContent = current + ' / ' + total; }
+    document.addEventListener('keydown', (e) => { if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); changeSlide(1); } if (e.key === 'ArrowLeft') { e.preventDefault(); changeSlide(-1); } });
+    let touchStartX = 0;
+    document.addEventListener('touchstart', (e) => { touchStartX = e.touches[0].clientX; });
+    document.addEventListener('touchend', (e) => { const diff = touchStartX - e.changedTouches[0].clientX; if (Math.abs(diff) > 50) changeSlide(diff > 0 ? 1 : -1); });
+
+    function animateSlide(slide) {
+        slide.querySelectorAll('.reveal').forEach((el, i) => {
+            el.style.opacity = '0'; el.style.transform = 'translateY(20px)';
+            Motion.animate(el, { opacity: 1, transform: 'translateY(0px)' }, { type: 'spring', stiffness: 200, damping: 30, delay: i * 0.12 });
+        });
+        animateSlideEffects(slide);
+    }
+
+    function animateSlideEffects(slide) {
+        slide.querySelectorAll('[data-count]:not(.counted)').forEach(el => {
+            el.classList.add('counted');
+            const target = parseInt(el.dataset.count);
+            const suffix = el.dataset.suffix || '', prefix = el.dataset.prefix || '';
+            let cur = 0; const step = target / 40;
+            const timer = setInterval(() => { cur += step; if (cur >= target) { cur = target; clearInterval(timer); } el.textContent = prefix + Math.round(cur).toLocaleString() + suffix; }, 30);
+        });
+        slide.querySelectorAll('.bar-fill:not(.fill-init)').forEach((bar, i) => {
+            bar.classList.add('fill-init');
+            const w = bar.dataset.width;
+            bar.style.width = '0%';
+            setTimeout(() => { bar.style.width = w + '%'; }, 200 + i * 150);
+        });
+    }
+
+    document.addEventListener('mousemove', (e) => {
+        const spotlight = document.querySelector('.mouse-spotlight');
+        if (spotlight) {
+            const rgb = getComputedStyle(document.documentElement).getPropertyValue('--glow-color-rgb').trim() || '56,189,248';
+            spotlight.style.background = `radial-gradient(600px circle at ${e.clientX}px ${e.clientY}px, rgba(${rgb}, 0.06), transparent 40%)`;
+        }
+    });
+
+    window.initParticles = function(canvas, options) {
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight;
+        const interactive = options.interactive !== false;
+        const count = options.count || (interactive ? 55 : 18);
+        let mx = -1000, my = -1000;
+        const rgb = getComputedStyle(document.documentElement).getPropertyValue('--glow-color-rgb').trim() || '56,189,248';
+        const [r, g, b] = rgb.split(',').map(Number);
+        const particles = Array.from({ length: count }, () => ({
+            x: Math.random() * canvas.width, y: Math.random() * canvas.height,
+            vx: (Math.random() - 0.5) * 0.3, vy: (Math.random() - 0.5) * 0.3,
+            size: Math.random() * 2.5 + 0.8, alpha: Math.random() * 0.35 + 0.1
+        }));
+        if (interactive) {
+            canvas.addEventListener('mousemove', (e) => { const rect = canvas.getBoundingClientRect(); mx = e.clientX - rect.left; my = e.clientY - rect.top; });
+            canvas.addEventListener('mouseleave', () => { mx = -1000; my = -1000; });
+        }
+        (function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            particles.forEach(p => {
+                if (interactive) { const dx = p.x - mx, dy = p.y - my, dist = Math.sqrt(dx * dx + dy * dy); if (dist < 120) { const force = (120 - dist) / 120 * 2; p.vx += (dx / dist) * force * 0.1; p.vy += (dy / dist) * force * 0.1; } }
+                p.vx *= 0.98; p.vy *= 0.98; p.x += p.vx; p.y += p.vy;
+                if (p.x < 0) p.x = canvas.width; if (p.x > canvas.width) p.x = 0;
+                if (p.y < 0) p.y = canvas.height; if (p.y > canvas.height) p.y = 0;
+                ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(${r},${g},${b},${p.alpha})`; ctx.fill();
+            });
+            requestAnimationFrame(animate);
+        })();
+    };
+    document.querySelectorAll('.particle-canvas').forEach(c => window.initParticles(c, { interactive: true, count: 55 }));
+
+    animateSlide(document.querySelector('.slide.active'));
+</script>
+
+</body>
+</html>

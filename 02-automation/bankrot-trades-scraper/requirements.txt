@@ -1,0 +1,8 @@
+# StealthyFetcher и браузер: нужен extra [fetchers]
+scrapling[fetchers]>=0.4.2
+
+# Второй этап (--table): обход карточек
+# После установки: venv\Scripts\playwright install chromium
+
+# db_review_server.py
+flask>=3.0

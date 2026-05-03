@@ -1,0 +1,3 @@
+record_date,amount,category,department
+2025-03-01,50000,Revenue,TestDept
+2025-03-01,-12000,OPEX,TestDept

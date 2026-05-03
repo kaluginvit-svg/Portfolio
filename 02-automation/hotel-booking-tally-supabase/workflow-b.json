@@ -1,0 +1,126 @@
+{
+  "id": "XEnOndzgYGruMNvQ",
+  "name": "Hotel booking B — daily report 18:00",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "daysInterval": 1,
+              "triggerAtHour": 18,
+              "triggerAtMinute": 0
+            }
+          ]
+        }
+      },
+      "id": "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee",
+      "name": "Schedule 18:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "getAll",
+        "tableId": "bookings",
+        "returnAll": true,
+        "filterType": "manual",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "created_at",
+              "condition": "gte",
+              "keyValue": "={{ $now.minus({ hours: 24 }).toISO() }}"
+            }
+          ]
+        }
+      },
+      "id": "ffffffff-ffff-ffff-ffff-ffffffffffff",
+      "name": "Bookings (last 24h)",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [520, 220],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "getAll",
+        "tableId": "bookings",
+        "returnAll": true,
+        "filterType": "manual",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "payment_status",
+              "condition": "eq",
+              "keyValue": "pending"
+            }
+          ]
+        }
+      },
+      "id": "12121212-1212-1212-1212-121212121212",
+      "name": "Bookings (pending)",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [520, 380],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "getAll",
+        "tableId": "rooms",
+        "returnAll": true,
+        "filterType": "manual",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "status",
+              "condition": "eq",
+              "keyValue": "reserved"
+            }
+          ]
+        }
+      },
+      "id": "13131313-1313-1313-1313-131313131313",
+      "name": "Rooms (reserved)",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [520, 540],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "authentication": "oAuth2",
+        "sendTo": "dir@kalugin-consulting.ru",
+        "subject": "Ежедневный отчёт по бронированиям ({{ $now.toFormat(\"yyyy-LL-dd\") }})",
+        "emailType": "text",
+        "message": "Здравствуйте!\n\nНиже отчёт за {{ $now.toFormat(\"yyyy-LL-dd\") }}.\n\n1) Новые бронирования за последние 24 часа: {{ $items('Bookings (last 24h)').length }}\n{{ $items('Bookings (last 24h)').map(i => `- ${i.json.client_name}: ${i.json.hotel_name} (${i.json.date_from}–${i.json.date_to}), ${i.json.room_type}`).join(\"\\n\") }}\n\n2) Неподтверждённые (payment_status=pending): {{ $items('Bookings (pending)').length }}\n{{ $items('Bookings (pending)').map(i => `- ${i.json.client_name}: ${i.json.hotel_name} (${i.json.date_from ?? \"\"}–${i.json.date_to ?? \"\"}), ${i.json.room_type ?? \"\"}`).join(\"\\n\") }}\n\n3) Номера со статусом reserved: {{ $items('Rooms (reserved)').length }}\n{{ $items('Rooms (reserved)').map(i => `- ${i.json.hotel_name}: ${i.json.room_type} (${i.json.date_from ?? \"\"}–${i.json.date_to ?? \"\"})`).join(\"\\n\") }}\n\nОтчёт сформирован автоматически (n8n + Supabase).\n",
+        "options": { "appendAttribution": false }
+      },
+      "id": "14141414-1414-1414-1414-141414141414",
+      "name": "Email manager (daily report)",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [840, 380]
+    }
+  ],
+  "connections": {
+    "Schedule 18:00": { "main": [[{ "node": "Bookings (last 24h)", "type": "main", "index": 0 }]] },
+    "Bookings (last 24h)": { "main": [[{ "node": "Bookings (pending)", "type": "main", "index": 0 }]] },
+    "Bookings (pending)": { "main": [[{ "node": "Rooms (reserved)", "type": "main", "index": 0 }]] },
+    "Rooms (reserved)": { "main": [[{ "node": "Email manager (daily report)", "type": "main", "index": 0 }]] }
+  },
+  "settings": {}
+}
+

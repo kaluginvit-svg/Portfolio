@@ -1,0 +1,37 @@
+services:
+  app:
+    image: ghcr.io/${GHCR_IMAGE_OWNER}/svo-site:latest
+    container_name: svo-site
+    restart: always
+    env_file: .env
+    # 3001 на хосте: порт 3000 часто занят другим Node/старым контейнером
+    ports:
+      - "127.0.0.1:3001:3000"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.svorazbor.rule=Host(`svorazbor.ru`)"
+      - "traefik.http.routers.svorazbor.entrypoints=websecure"
+      - "traefik.http.routers.svorazbor.tls=true"
+      - "traefik.http.routers.svorazbor.tls.certresolver=letsencrypt"
+      - "traefik.http.services.svorazbor.loadbalancer.server.port=3000"
+    networks:
+      - default
+      - dokploy-network
+    volumes:
+      - ./data:/app/data
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 45s
+
+networks:
+  dokploy-network:
+    external: true

@@ -1,0 +1,3 @@
+record_date,amount,category,project
+2025-03-10,-5000,Vendor payment,Scheduled
+2025-03-15,12000,Customer receipt,Scheduled

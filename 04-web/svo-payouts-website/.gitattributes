@@ -1,0 +1,2 @@
+# Скрипты деплоя на Linux — всегда LF
+deploy/scripts/*.sh text eol=lf

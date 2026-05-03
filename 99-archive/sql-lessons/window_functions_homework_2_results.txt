@@ -1,0 +1,390 @@
+ДОМАШНЕЕ ЗАДАНИЕ: ФУНКЦИИ РАНЖИРОВАНИЯ И СМЕЩЕНИЯ (ОКОННЫЕ ФУНКЦИИ)
+NTILE, LEAD, LAG, FIRST_VALUE, LAST_VALUE. Данные: marketing_data.csv
+
+============================================================
+1. Разделить кампании на три группы по сумме покупок (NTILE)
+============================================================
+SQL:
+WITH campaign_totals AS (
+    SELECT campaign_id, SUM(purchase_amount) AS total_sales
+    FROM marketing_data
+    GROUP BY campaign_id
+)
+SELECT
+    campaign_id,
+    total_sales,
+    NTILE(3) OVER (ORDER BY total_sales) AS sales_group
+FROM campaign_totals
+ORDER BY sales_group, total_sales;
+
+Результат:
+campaign_id  total_sales         sales_group
+--------------------------------------------
+130          446.89              1          
+196          646.47              1          
+140          668.39              1          
+110          773.2               1          
+182          822.36              1          
+179          837.52              1          
+181          851.13              1          
+158          870.37              1          
+126          885.0799999999999   1          
+169          924.1099999999999   1          
+101          943.33              1          
+143          1019.47             1          
+167          1030.97             1          
+170          1111.74             1          
+120          1175.3700000000001  1          
+177          1187.19             1          
+190          1190.46             1          
+139          1203.27             1          
+178          1283.93             1          
+103          1318.27             1          
+141          1384.2              1          
+147          1403.8899999999999  1          
+155          1426.45             1          
+121          1457.45             1          
+172          1490.05             1          
+... (показано 25 из 100 строк)
+Всего строк: 100
+
+============================================================
+2. Последующая покупка внутри каждой рекламной кампании (LEAD)
+============================================================
+SQL:
+SELECT
+    campaign_id,
+    customer_id,
+    purchase_amount,
+    purchase_date,
+    LEAD(purchase_amount) OVER (PARTITION BY campaign_id ORDER BY purchase_date) AS next_purchase_amount,
+    LEAD(purchase_date) OVER (PARTITION BY campaign_id ORDER BY purchase_date) AS next_purchase_date
+FROM marketing_data
+ORDER BY campaign_id, purchase_date;
+
+Результат:
+campaign_id  customer_id  purchase_amount  purchase_date  next_purchase_amount  next_purchase_date
+--------------------------------------------------------------------------------------------------
+100          390          89.43            2023-04-02     416.29                2023-04-04        
+100          106          416.29           2023-04-04     866.85                2023-04-09        
+100          402          866.85           2023-04-09     743.71                2023-05-23        
+100          499          743.71           2023-05-23     403.21                2023-11-09        
+100          837          403.21           2023-11-09     275.99                2023-12-12        
+100          640          275.99           2023-12-12     367.36                2024-02-18        
+100          681          367.36           2024-02-18     926.0                 2024-03-10        
+100          470          926.0            2024-03-10                                             
+101          122          147.44           2023-01-10     172.02                2023-05-29        
+101          379          172.02           2023-05-29     623.87                2023-06-25        
+101          943          623.87           2023-06-25                                             
+102          884          671.4            2023-11-10     637.14                2023-12-14        
+102          338          637.14           2023-12-14     734.9                 2024-02-27        
+102          504          734.9            2024-02-27     600.31                2024-03-26        
+102          609          600.31           2024-03-26                                             
+103          392          843.41           2023-05-25     379.58                2023-10-17        
+103          997          379.58           2023-10-17     43.61                 2024-03-14        
+103          670          43.61            2024-03-14     51.67                 2024-05-06        
+103          161          51.67            2024-05-06                                             
+104          388          597.66           2023-03-07     584.78                2023-09-15        
+104          684          584.78           2023-09-15     569.19                2023-10-05        
+104          113          569.19           2023-10-05     269.64                2024-01-30        
+104          104          269.64           2024-01-30     874.22                2024-02-26        
+104          916          874.22           2024-02-26     346.48                2024-03-31        
+104          453          346.48           2024-03-31     303.35                2024-05-04        
+... (показано 25 из 500 строк)
+Всего строк: 500
+
+============================================================
+3. Три первых клиента, привлечённых в рамках каждой кампании (LEAD)
+============================================================
+SQL:
+WITH ordered AS (
+    SELECT
+        campaign_id,
+        customer_id,
+        purchase_date,
+        ROW_NUMBER() OVER (PARTITION BY campaign_id ORDER BY purchase_date) AS rn,
+        LEAD(customer_id, 1) OVER (PARTITION BY campaign_id ORDER BY purchase_date) AS second_customer_id,
+        LEAD(customer_id, 2) OVER (PARTITION BY campaign_id ORDER BY purchase_date) AS third_customer_id
+    FROM marketing_data
+)
+SELECT campaign_id, customer_id AS first_customer_id, second_customer_id, third_customer_id
+FROM ordered
+WHERE rn = 1
+ORDER BY campaign_id;
+
+Результат:
+campaign_id  first_customer_id  second_customer_id  third_customer_id
+---------------------------------------------------------------------
+100          390                106                 402              
+101          122                379                 943              
+102          884                338                 504              
+103          392                997                 670              
+104          388                684                 113              
+105          316                201                 120              
+106          806                393                 830              
+107          460                841                 218              
+108          459                388                 640              
+109          65                 648                 864              
+110          473                                                     
+111          2                  135                 407              
+112          492                367                 547              
+113          22                 819                 489              
+114          857                485                 929              
+115          314                92                  730              
+116          215                428                 578              
+117          672                864                 227              
+118          455                776                 472              
+119          277                123                 147              
+120          691                764                 996              
+121          958                996                                  
+122          701                872                 813              
+123          861                344                 419              
+124          770                783                 633              
+... (показано 25 из 100 строк)
+Всего строк: 100
+
+============================================================
+4. Первый клиент, привлечённый в рамках каждой кампании (FIRST_VALUE)
+============================================================
+SQL:
+SELECT DISTINCT
+    campaign_id,
+    FIRST_VALUE(customer_id) OVER (PARTITION BY campaign_id ORDER BY purchase_date) AS first_customer_id
+FROM marketing_data
+ORDER BY campaign_id;
+
+Результат:
+campaign_id  first_customer_id
+------------------------------
+100          390              
+101          122              
+102          884              
+103          392              
+104          388              
+105          316              
+106          806              
+107          460              
+108          459              
+109          65               
+110          473              
+111          2                
+112          492              
+113          22               
+114          857              
+115          314              
+116          215              
+117          672              
+118          455              
+119          277              
+120          691              
+121          958              
+122          701              
+123          861              
+124          770              
+... (показано 25 из 100 строк)
+Всего строк: 100
+
+============================================================
+5. Первые клиенты, совершившие покупки в каждом канале (FIRST_VALUE)
+============================================================
+SQL:
+SELECT DISTINCT
+    channel,
+    FIRST_VALUE(customer_id) OVER (PARTITION BY channel ORDER BY purchase_date) AS first_customer_id
+FROM marketing_data
+ORDER BY channel;
+
+Результат:
+channel  first_customer_id
+--------------------------
+Offline  103              
+Online   436              
+Всего строк: 2
+
+============================================================
+6. Последние клиенты, совершившие покупки в каждом канале (FIRST_VALUE с обратной сортировкой)
+============================================================
+SQL:
+SELECT DISTINCT
+    channel,
+    FIRST_VALUE(customer_id) OVER (PARTITION BY channel ORDER BY purchase_date DESC) AS last_customer_id
+FROM marketing_data
+ORDER BY channel;
+
+Результат:
+channel  last_customer_id
+-------------------------
+Offline  566             
+Online   570             
+Всего строк: 2
+
+============================================================
+7. Два последних клиента, привлечённых в рамках каждой кампании (LAG)
+============================================================
+SQL:
+WITH ordered AS (
+    SELECT
+        campaign_id,
+        customer_id,
+        purchase_date,
+        ROW_NUMBER() OVER (PARTITION BY campaign_id ORDER BY purchase_date DESC) AS rn,
+        LAG(customer_id, 1) OVER (PARTITION BY campaign_id ORDER BY purchase_date DESC) AS second_last_customer_id
+    FROM marketing_data
+)
+SELECT campaign_id, customer_id AS last_customer_id, second_last_customer_id
+FROM ordered
+WHERE rn = 1
+ORDER BY campaign_id;
+
+Результат:
+campaign_id  last_customer_id  second_last_customer_id
+------------------------------------------------------
+100          470                                      
+101          943                                      
+102          609                                      
+103          161                                      
+104          928                                      
+105          580                                      
+106          830                                      
+107          624                                      
+108          510                                      
+109          256                                      
+110          473                                      
+111          879                                      
+112          404                                      
+113          17                                       
+114          929                                      
+115          151                                      
+116          793                                      
+117          227                                      
+118          511                                      
+119          147                                      
+120          996                                      
+121          996                                      
+122          192                                      
+123          298                                      
+124          587                                      
+... (показано 25 из 100 строк)
+Всего строк: 100
+
+============================================================
+8. Последний клиент, привлечённый в рамках каждой кампании (FIRST_VALUE с обратной сортировкой)
+============================================================
+SQL:
+SELECT DISTINCT
+    campaign_id,
+    FIRST_VALUE(customer_id) OVER (PARTITION BY campaign_id ORDER BY purchase_date DESC) AS last_customer_id
+FROM marketing_data
+ORDER BY campaign_id;
+
+Результат:
+campaign_id  last_customer_id
+-----------------------------
+100          470             
+101          943             
+102          609             
+103          161             
+104          928             
+105          580             
+106          830             
+107          624             
+108          510             
+109          256             
+110          473             
+111          879             
+112          404             
+113          17              
+114          929             
+115          151             
+116          793             
+117          227             
+118          511             
+119          147             
+120          996             
+121          996             
+122          192             
+123          298             
+124          587             
+... (показано 25 из 100 строк)
+Всего строк: 100
+
+============================================================
+9. Последние клиенты, совершившие покупки в каждом регионе (FIRST_VALUE с обратной сортировкой)
+============================================================
+SQL:
+SELECT DISTINCT
+    region,
+    FIRST_VALUE(customer_id) OVER (PARTITION BY region ORDER BY purchase_date DESC) AS last_customer_id
+FROM marketing_data
+ORDER BY region;
+
+Результат:
+region  last_customer_id
+------------------------
+East    793             
+North   323             
+South   570             
+West    735             
+Всего строк: 4
+
+============================================================
+10. Пять первых покупок внутри каждой кампании и динамика
+============================================================
+SQL:
+WITH numbered AS (
+    SELECT
+        campaign_id,
+        purchase_date,
+        purchase_amount,
+        ROW_NUMBER() OVER (PARTITION BY campaign_id ORDER BY purchase_date) AS rn
+    FROM marketing_data
+)
+SELECT
+    campaign_id,
+    MAX(CASE WHEN rn = 1 THEN purchase_amount END) AS purchase_1,
+    MAX(CASE WHEN rn = 2 THEN purchase_amount END) AS purchase_2,
+    MAX(CASE WHEN rn = 3 THEN purchase_amount END) AS purchase_3,
+    MAX(CASE WHEN rn = 4 THEN purchase_amount END) AS purchase_4,
+    MAX(CASE WHEN rn = 5 THEN purchase_amount END) AS purchase_5,
+    ROUND(MAX(CASE WHEN rn = 1 THEN purchase_amount END) +
+          COALESCE(MAX(CASE WHEN rn = 2 THEN purchase_amount END), 0) +
+          COALESCE(MAX(CASE WHEN rn = 3 THEN purchase_amount END), 0) +
+          COALESCE(MAX(CASE WHEN rn = 4 THEN purchase_amount END), 0) +
+          COALESCE(MAX(CASE WHEN rn = 5 THEN purchase_amount END), 0), 2) AS sum_first_5
+FROM numbered
+WHERE rn <= 5
+GROUP BY campaign_id
+ORDER BY campaign_id;
+
+Результат:
+campaign_id  purchase_1  purchase_2  purchase_3  purchase_4  purchase_5  sum_first_5
+------------------------------------------------------------------------------------
+100          89.43       416.29      866.85      743.71      403.21      2519.49    
+101          147.44      172.02      623.87                              943.33     
+102          671.4       637.14      734.9       600.31                  2643.75    
+103          843.41      379.58      43.61       51.67                   1318.27    
+104          597.66      584.78      569.19      269.64      874.22      2895.49    
+105          791.28      587.21      721.86      145.45                  2245.8     
+106          370.63      878.0       599.43                              1848.06    
+107          90.94       334.22      318.6       446.36      558.64      1748.76    
+108          897.82      181.64      133.42      420.48      213.09      1846.45    
+109          417.72      733.56      236.96      735.25      27.7        2151.19    
+110          773.2                                                       773.2      
+111          897.8       878.43      507.69      341.56      590.37      3215.85    
+112          466.17      369.45      631.43      615.34      610.65      2693.04    
+113          921.66      915.7       801.86      619.7                   3258.92    
+114          808.14      383.51      430.96                              1622.61    
+115          874.84      290.94      818.9       330.44      143.07      2458.19    
+116          190.06      362.54      699.68      507.17      163.69      1923.14    
+117          961.46      869.78      501.4                               2332.64    
+118          575.07      609.72      938.96      739.08      984.99      3847.82    
+119          801.42      108.45      765.97                              1675.84    
+120          799.32      275.38      100.67                              1175.37    
+121          896.25      561.2                                           1457.45    
+122          137.59      292.24      476.86      406.84      27.93       1341.46    
+123          335.46      129.43      797.31      365.24      722.84      2350.28    
+124          97.82       750.0       404.19      94.65       667.03      2013.69    
+... (показано 25 из 100 строк)
+Всего строк: 100
+
+Готово.

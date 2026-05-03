@@ -1,0 +1,150 @@
+{
+  "name": "HUMAN-IN-THE-LOOP",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "hitl-message-ready",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "hitl-webhook-001",
+      "name": "Webhook — Message Ready for Review",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 400],
+      "webhookId": "hitl-message-ready"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Slack Block Kit card for #lead-review (Approve / Edit / Reject via Block Kit buttons + metadata)\nconst b = items[0].json.body || items[0].json;\nreturn [{\n  json: {\n    ...b,\n    slack_text: `Lead review: ${b.lead_id || 'unknown'}`,\n    slack_blocks: [\n      { type: 'section', text: { type: 'mrkdwn', text: `*Review draft*\\n${(b.draft || '').slice(0, 2900)}` } },\n      { type: 'actions', elements: [\n        { type: 'button', text: { type: 'plain_text', text: 'Approve' }, style: 'primary', value: 'approve', action_id: 'hitl_approve' },\n        { type: 'button', text: { type: 'plain_text', text: 'Reject' }, style: 'danger', value: 'reject', action_id: 'hitl_reject' }\n      ]}\n    ]\n  }\n}];"
+      },
+      "id": "hitl-code-format-002",
+      "name": "Code — Format Slack Card",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [240, 400]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "message",
+        "operation": "post",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "#lead-review",
+          "mode": "name"
+        },
+        "messageType": "text",
+        "text": "={{ $json.slack_text }}",
+        "otherOptions": {}
+      },
+      "id": "hitl-slack-review-003",
+      "name": "Slack — Send to #lead-review",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [480, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "return items.map(i => ({\n  json: {\n    ...i.json,\n    review_sent_at: new Date().toISOString(),\n    slack_ts: i.json.ts || i.json.message_ts\n  }\n}));"
+      },
+      "id": "hitl-code-log-sent-004",
+      "name": "Code — Log Review Sent",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [720, 400]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "application": {
+          "__rl": true,
+          "value": "YOUR_AIRTABLE_BASE_ID",
+          "mode": "id"
+        },
+        "table": {
+          "__rl": true,
+          "value": "ReviewQueue",
+          "mode": "name",
+          "cachedResultName": "ReviewQueue"
+        },
+        "id": "={{ $json.lead_id || $json.body?.lead_id }}",
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Status": "pending_review",
+            "SlackTS": "={{ $json.slack_ts }}",
+            "ReviewSentAt": "={{ $json.review_sent_at }}"
+          },
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "hitl-airtable-queue-005",
+      "name": "Airtable — Update Queue",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [960, 260]
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "application": {
+          "__rl": true,
+          "value": "YOUR_AIRTABLE_BASE_ID",
+          "mode": "id"
+        },
+        "table": {
+          "__rl": true,
+          "value": "Interactions",
+          "mode": "name",
+          "cachedResultName": "Interactions"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Type": "hitl_review_posted",
+            "Payload": "={{ JSON.stringify($json) }}",
+            "CreatedAt": "={{ $now.toISO() }}"
+          },
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "hitl-airtable-interaction-006",
+      "name": "Airtable — Log Interaction",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [960, 540]
+    }
+  ],
+  "connections": {
+    "Webhook — Message Ready for Review": {
+      "main": [[{ "node": "Code — Format Slack Card", "type": "main", "index": 0 }]]
+    },
+    "Code — Format Slack Card": {
+      "main": [[{ "node": "Slack — Send to #lead-review", "type": "main", "index": 0 }]]
+    },
+    "Slack — Send to #lead-review": {
+      "main": [[{ "node": "Code — Log Review Sent", "type": "main", "index": 0 }]]
+    },
+    "Code — Log Review Sent": {
+      "main": [
+        [
+          { "node": "Airtable — Update Queue", "type": "main", "index": 0 },
+          { "node": "Airtable — Log Interaction", "type": "main", "index": 0 }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": { "executionOrder": "v1" },
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "description": "Схема: Slack #lead-review + дубль в Airtable (очередь + лог). Кнопки/interaction endpoint — отдельный wf от Slack. HITL 24h timeout WARM → в БД, не авто-отправка."
+  }
+}

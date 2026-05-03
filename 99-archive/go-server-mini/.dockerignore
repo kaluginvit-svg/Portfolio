@@ -1,0 +1,5 @@
+*.md
+.git
+userserver
+userserver.exe
+.gitignore

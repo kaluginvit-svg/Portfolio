@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Просмотр записей .db</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, Segoe UI, sans-serif;
+      background: #1a1b26 !important;
+      color: #c0caf5 !important;
+    }
+    body {
+      padding: 1rem;
+      max-width: 900px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    h1 { font-size: 1.25rem; margin-bottom: 1rem; color: #7aa2f7; }
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+    label { font-size: 0.9rem; }
+    select {
+      padding: 0.4rem 0.6rem;
+      font-size: 1rem;
+      background: #24283b;
+      color: #c0caf5;
+      border: 1px solid #414868;
+      border-radius: 6px;
+      min-width: 220px;
+    }
+    .card {
+      background: #24283b;
+      border-radius: 8px;
+      padding: 1.25rem;
+      margin-bottom: 1rem;
+      border: 1px solid #414868;
+    }
+    .card h2 {
+      font-size: 0.85rem;
+      color: #7dcfff;
+      margin: 0 0 0.5rem 0;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .description {
+      font-size: 1rem;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      word-break: break-word;
+      min-height: 120px;
+      max-height: 60vh;
+      overflow-y: auto;
+      contain: layout;
+      isolation: isolate;
+    }
+    .price {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: #9ece6a;
+    }
+    .url { font-size: 0.95rem; word-break: break-all; }
+    .url a { color: #7aa2f7; }
+    .trade-type { font-size: 1rem; }
+    .lots-same-url {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #bb9af7;
+    }
+    .meta {
+      font-size: 0.8rem;
+      color: #565f89;
+      margin-bottom: 1rem;
+    }
+    .buttons {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-top: 1.25rem;
+      position: relative;
+      z-index: 2;
+      isolation: isolate;
+    }
+    button {
+      padding: 0.6rem 1.2rem;
+      font-size: 1rem;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 500;
+    }
+    .btn-prev {
+      background: #565f89;
+      color: #c0caf5;
+    }
+    .btn-prev:hover:not(:disabled) { background: #6c7086; }
+    .btn-prev:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+    .btn-next {
+      background: #7aa2f7;
+      color: #1a1b26;
+    }
+    .btn-next:hover:not(:disabled) { background: #89b4fa; }
+    .btn-next:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+    .btn-keep {
+      background: #9ece6a;
+      color: #1a1b26;
+    }
+    .btn-keep:hover { background: #b9f27c; }
+    .btn-delete {
+      background: #f7768e;
+      color: #1a1b26;
+    }
+    .btn-delete:hover { background: #ff9eaf; }
+    .btn-delete-url {
+      background: #dc2626;
+      color: #fff;
+      padding: 1rem 1.75rem;
+      font-size: 1.15rem;
+      font-weight: 700;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(220, 38, 38, 0.45);
+    }
+    .btn-delete-url:hover {
+      background: #ef4444;
+      box-shadow: 0 3px 12px rgba(239, 68, 68, 0.5);
+    }
+    .btn-undo {
+      background: #565f89;
+      color: #c0caf5;
+    }
+    .btn-undo:hover:not(:disabled) {
+      background: #6c7086;
+    }
+    .btn-undo:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+    .empty {
+      color: #565f89;
+      padding: 2rem;
+      text-align: center;
+    }
+    .error { color: #f7768e; margin-top: 0.5rem; }
+  </style>
+</head>
+<body>
+  <noscript>
+    <p style="padding:1rem;color:#f7768e;">Включите JavaScript для работы страницы.</p>
+  </noscript>
+  <p style="font-size:0.85rem;color:#565f89;margin-bottom:0.5rem;">Просмотр записей .db</p>
+  <h1 style="margin:0 0 1rem 0;color:#7aa2f7;">Просмотр записей</h1>
+  <div class="toolbar">
+    <label for="db-select">Файл .db:</label>
+    <select id="db-select">
+      <option value="">— загрузка… —</option>
+    </select>
+    <span class="meta" id="meta"></span>
+  </div>
+  <div id="content">
+    <div class="empty" id="empty">Выберите файл .db из списка</div>
+    <div id="card" style="display: none;">
+      <div class="meta" id="counter"></div>
+      <div class="card">
+        <h2>URL</h2>
+        <div class="url" id="url"></div>
+      </div>
+      <div class="card">
+        <h2>Лотов в этом URL</h2>
+        <div class="lots-same-url" id="lots-same-url">—</div>
+      </div>
+      <div class="card">
+        <h2>Вид торгов</h2>
+        <div class="trade-type" id="trade-type"></div>
+      </div>
+      <div class="card">
+        <h2>Описание</h2>
+        <div class="description" id="description"></div>
+      </div>
+      <div class="card">
+        <h2>Начальная цена, руб.</h2>
+        <div class="price" id="price"></div>
+      </div>
+      <div class="buttons">
+        <button type="button" class="btn-prev" id="btn-prev">Предыдущая</button>
+        <button type="button" class="btn-next" id="btn-next">Следующая</button>
+        <button type="button" class="btn-keep" id="btn-keep">Оставить</button>
+        <button type="button" class="btn-delete" id="btn-delete">Удалить</button>
+        <button type="button" class="btn-undo" id="btn-undo" disabled>Отменить</button>
+        <button type="button" class="btn-delete-url" id="btn-delete-url">Удалить весь URL</button>
+      </div>
+    </div>
+  </div>
+  <div class="error" id="error"></div>
+
+  <script>
+    (function() {
+    const dbSelect = document.getElementById('db-select');
+    const emptyEl = document.getElementById('empty');
+    const cardEl = document.getElementById('card');
+    const urlEl = document.getElementById('url');
+    const tradeTypeEl = document.getElementById('trade-type');
+    const descriptionEl = document.getElementById('description');
+    const priceEl = document.getElementById('price');
+    const counterEl = document.getElementById('counter');
+    const lotsSameUrlEl = document.getElementById('lots-same-url');
+    const metaEl = document.getElementById('meta');
+    const btnPrev = document.getElementById('btn-prev');
+    const btnNext = document.getElementById('btn-next');
+    const btnKeep = document.getElementById('btn-keep');
+    const btnDelete = document.getElementById('btn-delete');
+    const btnUndo = document.getElementById('btn-undo');
+    const btnDeleteUrl = document.getElementById('btn-delete-url');
+    const errorEl = document.getElementById('error');
+
+    let state = { db: null, index: 0, total: 0, rowid: null, url: '' };
+    /** Последний снимок после «Удалить» (одна отмена). */
+    let undoSnapshot = null;
+    let busy = false;
+
+    function setError(msg) {
+      errorEl.textContent = msg || '';
+    }
+
+    function refreshNavAvailability() {
+      const noData = busy || !state.db || state.total <= 0;
+      const atFirst = state.index <= 0;
+      const atLast = state.total > 0 && state.index >= state.total - 1;
+      btnPrev.disabled = noData || atFirst;
+      btnNext.disabled = noData || atLast;
+      btnKeep.disabled = noData || atLast;
+      btnDelete.disabled = noData || state.rowid == null;
+      btnDeleteUrl.disabled = noData || !state.url;
+    }
+
+    function setBusy(v) {
+      busy = !!v;
+      refreshNavAvailability();
+      dbSelect.disabled = busy;
+      if (busy) {
+        metaEl.textContent = '… выполняется запрос';
+      } else {
+        metaEl.textContent = '';
+      }
+    }
+
+    async function fetchJson(url, options) {
+      const ctrl = new AbortController();
+      const timeoutMs = 15000;
+      const t = setTimeout(() => ctrl.abort(), timeoutMs);
+      try {
+        const r = await fetch(url, { ...(options || {}), signal: ctrl.signal });
+        const text = await r.text();
+        let data = null;
+        try { data = text ? JSON.parse(text) : null; } catch (_) { data = null; }
+        if (!r.ok) {
+          const msg = (data && data.error) ? data.error : (text || (r.status + ' ' + r.statusText));
+          throw new Error(msg);
+        }
+        return data;
+      } finally {
+        clearTimeout(t);
+      }
+    }
+
+    async function loadDatabases() {
+      try {
+        const list = await fetchJson('/api/databases');
+        if (!Array.isArray(list)) throw new Error('Неверный ответ сервера');
+        dbSelect.innerHTML = '<option value="">— выберите файл —</option>' +
+          list.map(f => `<option value="${escapeHtml(f)}">${escapeHtml(f)}</option>`).join('');
+      } catch (e) {
+        setError('Не удалось загрузить список файлов: ' + (e.message || e));
+        dbSelect.innerHTML = '<option value="">— ошибка загрузки —</option>';
+      }
+    }
+
+    function escapeHtml(s) {
+      const div = document.createElement('div');
+      div.textContent = s;
+      return div.innerHTML;
+    }
+
+    /** Показывает URL как ссылку без innerHTML строки href (сломанные символы в URL не «съедают» разметку). */
+    function renderUrl(container, rawUrl) {
+      container.replaceChildren();
+      const t = String(rawUrl || '').trim();
+      if (!t) {
+        container.textContent = '—';
+        return;
+      }
+      const isHttp = t.startsWith('http://') || t.startsWith('https://');
+      if (!isHttp) {
+        container.textContent = t;
+        return;
+      }
+      let href = null;
+      try {
+        href = new URL(t).href;
+      } catch (_) {
+        container.textContent = t;
+        return;
+      }
+      const a = document.createElement('a');
+      a.href = href;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      a.textContent = t;
+      container.appendChild(a);
+    }
+
+    /** rowid только как число; иначе кнопки «Удалить» остаются «мёртвыми». */
+    function normalizeRowId(v) {
+      if (v == null || v === '') return null;
+      const n = typeof v === 'bigint' ? Number(v) : Number(v);
+      return Number.isFinite(n) && n > 0 ? n : null;
+    }
+
+    async function loadRecord(opts) {
+      const nested = opts && opts.nested;
+      if (!state.db) return;
+      if (!nested) {
+        setError('');
+        setBusy(true);
+      }
+      try {
+        const data = await fetchJson(`/api/record?db=${encodeURIComponent(state.db)}&index=${state.index}`);
+        const tn = Number(data.total);
+        state.total = Number.isFinite(tn) && tn >= 0 ? Math.floor(tn) : 0;
+        state.rowid = normalizeRowId(data.rowid);
+        state.url = (data.url || '').trim();
+        if (data.total === 0) {
+          emptyEl.style.display = 'block';
+          emptyEl.textContent = 'В этой базе нет записей.';
+          cardEl.style.display = 'none';
+          return;
+        }
+        emptyEl.style.display = 'none';
+        cardEl.style.display = 'block';
+        renderUrl(urlEl, data.url || '');
+        if (!state.url) {
+          lotsSameUrlEl.textContent = '—';
+        } else {
+          const l = Number(data.lots_same_url);
+          lotsSameUrlEl.textContent = Number.isFinite(l) && l >= 0 ? String(l) : '—';
+        }
+        tradeTypeEl.textContent = data.trade_type || '—';
+        descriptionEl.textContent = data.description || '—';
+        priceEl.textContent = data.price || '—';
+        if (typeof data.index === 'number' && data.index >= 0) {
+          state.index = Math.min(data.index, Math.max(0, state.total - 1));
+        }
+        const pos = state.index + 1;
+        counterEl.textContent =
+          pos >= state.total
+            ? `Запись ${pos} из ${state.total} (последняя)`
+            : `Запись ${pos} из ${state.total}`;
+      } catch (e) {
+        setError('Ошибка: ' + (e && e.message ? e.message : e));
+      } finally {
+        if (!nested) setBusy(false);
+      }
+    }
+
+    async function deleteCurrent() {
+      if (!state.db || state.rowid == null) return;
+      setError('');
+      setBusy(true);
+      try {
+        const data = await fetchJson('/api/record', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ db: state.db, rowid: state.rowid })
+        });
+        undoSnapshot = (data.snapshot && state.db) ? { db: state.db, snapshot: data.snapshot } : null;
+        btnUndo.disabled = !undoSnapshot;
+        state.total -= 1;
+        if (state.index >= state.total && state.index > 0) state.index -= 1;
+        await loadRecord({ nested: true });
+      } catch (e) {
+        setError('Ошибка: ' + (e && e.message ? e.message : e));
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    async function undoDelete() {
+      if (!undoSnapshot || !undoSnapshot.db || !undoSnapshot.snapshot) return;
+      setError('');
+      setBusy(true);
+      try {
+        const data = await fetchJson('/api/record/restore', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ db: undoSnapshot.db, snapshot: undoSnapshot.snapshot })
+        });
+        undoSnapshot = null;
+        btnUndo.disabled = true;
+        if (typeof data.total === 'number' && data.total > 0) {
+          state.index = data.total - 1;
+        }
+        await loadRecord({ nested: true });
+      } catch (e) {
+        setError('Ошибка: ' + (e && e.message ? e.message : e));
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    async function deleteAllByUrl() {
+      if (!state.db || state.rowid == null) return;
+      if (!state.url) {
+        setError('URL пустой — удаление по URL недоступно.');
+        return;
+      }
+      const msg = 'Удалить из базы все записи с этим URL?\n\n' + state.url;
+      if (!confirm(msg)) return;
+      setError('');
+      setBusy(true);
+      try {
+        const data = await fetchJson('/api/records-by-url', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ db: state.db, rowid: state.rowid })
+        });
+        const n = data.deleted | 0;
+        undoSnapshot = null;
+        btnUndo.disabled = true;
+        state.total -= n;
+        if (state.total <= 0) {
+          state.index = 0;
+        } else if (state.index >= state.total) {
+          state.index = state.total - 1;
+        }
+        await loadRecord({ nested: true });
+      } catch (e) {
+        setError('Ошибка: ' + (e && e.message ? e.message : e));
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    function nextRecord() {
+      if (state.total <= 0 || state.index >= state.total - 1) return;
+      state.index += 1;
+      loadRecord();
+    }
+
+    function prevRecord() {
+      if (state.total <= 0 || state.index <= 0) return;
+      state.index -= 1;
+      loadRecord();
+    }
+
+    dbSelect.addEventListener('change', () => {
+      state.db = dbSelect.value || null;
+      state.index = 0;
+      metaEl.textContent = '';
+      undoSnapshot = null;
+      btnUndo.disabled = true;
+      if (state.db) loadRecord();
+      else {
+        emptyEl.style.display = 'block';
+        emptyEl.textContent = 'Выберите файл .db из списка';
+        cardEl.style.display = 'none';
+      }
+    });
+
+    btnPrev.addEventListener('click', prevRecord);
+    btnNext.addEventListener('click', nextRecord);
+    btnKeep.addEventListener('click', nextRecord);
+    document.addEventListener('keydown', (ev) => {
+      if (ev.target && (ev.target.tagName === 'INPUT' || ev.target.tagName === 'SELECT' || ev.target.tagName === 'TEXTAREA')) return;
+      if (ev.key === 'ArrowLeft') {
+        ev.preventDefault();
+        prevRecord();
+      } else if (ev.key === 'ArrowRight') {
+        ev.preventDefault();
+        nextRecord();
+      }
+    });
+    btnDelete.addEventListener('click', deleteCurrent);
+    btnUndo.addEventListener('click', undoDelete);
+    btnDeleteUrl.addEventListener('click', deleteAllByUrl);
+
+    refreshNavAvailability();
+    loadDatabases();
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,46 @@
+{
+  "name": "LIVE RESULTS — Dashboard Notes",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## LIVE RESULTS — обзор стека\n\n- **INTENT RADAR** — скан намерений по расписанию, ветвление deep/lite, итог в sink.\n- **LEAD DNA** — webhook → слои обогащения → CRM → маршрутизация по tier.\n- **MULTI-LLM** — три модели → merge → консенсус → сохранение.\n- **HUMAN-IN-THE-LOOP** — wait для ручного решения → approved/rejected.\n- **PREMIUM OUTREACH** — email + LinkedIn + обновление воронки в CRM.\n- **SMART NURTURE** — decay warmth, switch сегментов nurture.\n- **COMPETITIVE INTEL** — парсинг конкурентов по cron.\n- **COMMAND CENTER** — центр событий + алерты.\n- **SHADOW MODE** — валидация логики в тени.\n- **GLOBAL ERROR** — единый error workflow.\n\nПодключите HTTP узлы к реальным URL и credentials. Импорт: **Workflow → Import from File**.",
+        "height": 420,
+        "width": 480,
+        "color": 5
+      },
+      "id": "e1f2a3b4-c5d6-4e1f-9abb-bbbbbbbbb11",
+      "name": "Sticky Note — Live Results",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [200, 200]
+    },
+    {
+      "parameters": {},
+      "id": "e1f2a3b4-c5d6-4e1f-9abb-bbbbbbbbb12",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [200, 700]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { ok: true, message: 'Documentation workflow — no automation required.', generatedAt: new Date().toISOString() } }];"
+      },
+      "id": "e1f2a3b4-c5d6-4e1f-9abb-bbbbbbbbb13",
+      "name": "Code — Placeholder",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [420, 700]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [[{ "node": "Code — Placeholder", "type": "main", "index": 0 }]]
+    }
+  },
+  "pinData": {},
+  "settings": { "executionOrder": "v1" },
+  "meta": {
+    "description": "На схеме это блок документации; в n8n — заметка + минимальный trigger для совместимости импорта."
+  }
+}

@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Виталий Калугин — витрина собирается в Actions</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --fg: #1a1d26;
+        --muted: #5c6370;
+        --bg: #f6f4ef;
+        --border: #e2ddd4;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --fg: #ece8df;
+          --muted: #a8a095;
+          --bg: #12141a;
+          --border: #2a2f3a;
+        }
+      }
+      body {
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+        line-height: 1.55;
+        max-width: 38rem;
+        margin: 2.5rem auto;
+        padding: 0 1.25rem;
+        color: var(--fg);
+        background: var(--bg);
+      }
+      h1 {
+        font-size: 1.35rem;
+        font-weight: 700;
+        margin: 0 0 0.75rem;
+      }
+      p {
+        margin: 0 0 1rem;
+        color: var(--muted);
+      }
+      code {
+        font-size: 0.9em;
+        padding: 0.1em 0.35em;
+        border-radius: 4px;
+        background: color-mix(in srgb, var(--border) 55%, transparent);
+      }
+      a {
+        color: inherit;
+        font-weight: 600;
+      }
+      .box {
+        margin-top: 1.25rem;
+        padding: 1rem 1.1rem;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Это запасная страница репозитория</h1>
+    <p>
+      Нормальная витрина — статический сайт из папки <code>site/</code>, который публикует workflow
+      <strong>Deploy Portfolio site (GitHub Pages)</strong>. Готовый сайт целиком заменяет то, что отдаётся с
+      <code>github.io</code>, поэтому после успешного деплоя вы <strong>не должны</strong> видеть этот файл.
+    </p>
+    <div class="box">
+      <p style="margin: 0 0 0.75rem; color: var(--fg)">
+        Если вы долго видите <strong>README</strong> или эту страницу вместо визитки:
+      </p>
+      <ol style="margin: 0; padding-left: 1.25rem; color: var(--muted)">
+        <li>
+          Settings → Pages → источник: <strong>GitHub Actions</strong> (не «Deploy from a branch»).
+        </li>
+        <li>
+          Actions → <strong>Deploy Portfolio site (GitHub Pages)</strong> → последний прогон зелёный.
+        </li>
+        <li>
+          Полная перезагрузка без кэша: Ctrl+F5 или другой браузер / режим инкогнито.
+        </li>
+      </ol>
+      <p style="margin: 1rem 0 0">
+        <a href="https://github.com/kaluginvit-svg/Portfolio/actions/workflows/portfolio-github-pages.yml">Открыть workflow →</a>
+      </p>
+    </div>
+  </body>
+</html>

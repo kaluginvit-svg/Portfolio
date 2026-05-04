@@ -4,7 +4,7 @@
 
 **Помогаю бизнесу принимать решения по данным и собирать рабочие ИИ-продукты** — от Telegram-ботов и автоматизаций n8n до прод-сайтов с расчётами и лидогенерацией.
 
-**1 prod-сайт + 2 онлайн-демо** · **20+ кейсов по 5 направлениям** · **Docker-образы в GHCR** → [svorazbor.ru](https://svorazbor.ru)
+**1 prod-сайт + 2 онлайн-демо** · **22+ кейсов по 5 направлениям** · **Docker-образы в GHCR** → [svorazbor.ru](https://svorazbor.ru)
 
 [![Build Docker images](https://github.com/kaluginvit-svg/Portfolio/actions/workflows/build-images.yml/badge.svg)](https://github.com/kaluginvit-svg/Portfolio/actions/workflows/build-images.yml)
 [![GitHub Pages — визитка + Superstore](https://github.com/kaluginvit-svg/Portfolio/actions/workflows/portfolio-github-pages.yml/badge.svg)](https://github.com/kaluginvit-svg/Portfolio/actions/workflows/portfolio-github-pages.yml)
@@ -130,6 +130,7 @@
 | Яндекс.Диск ↔ Google Drive | Двусторонний sync с конфликтами и cron-расписанием | [`yandex-google-sync`](./02-automation/yandex-google-sync/) | [GHCR](https://github.com/kaluginvit-svg/Portfolio/pkgs/container/yandex-google-sync) |
 | Бронирования Tally → Supabase → почта | Полный flow «форма → дедуп → бронь → письма» без ручного Excel | [`hotel-booking-tally-supabase`](./02-automation/hotel-booking-tally-supabase/) | документация + workflow JSON |
 | CI/CD-шаблон | GitHub Actions → GHCR → SSH-deploy: типовой деплой одной строкой | [`github-actions-setup`](./02-automation/github-actions-setup/) | [GHCR](https://github.com/kaluginvit-svg/Portfolio/pkgs/container/github-actions-setup) |
+| Google Sheets — учебный отчёт | Сервисный аккаунт, форматирование листа, GUI-симулятор | [`google-sheets-report`](./02-automation/google-sheets-report/) | локально / Python |
 
 ### [03 — ИИ-продукты](./03-ai-products/)
 
@@ -149,6 +150,7 @@
 | Сайт СВО (прод) | **Прод-сайт** с квизом, лид-формой и Telegram-ботом-парой | [`svo-payouts-website`](./04-web/svo-payouts-website/) | [svorazbor.ru](https://svorazbor.ru) · [GHCR](https://github.com/kaluginvit-svg/Portfolio/pkgs/container/svo-payouts-website) |
 | Dostaffkin: Angular + Express, доставка | Full-stack минимализм с трекингом статусов; **демо онлайн** | [`dostaffkin`](./04-web/dostaffkin/) | **[Сайт](https://kaluginvit72.github.io/dostaffkin/)** · `docker compose` · [GHCR backend](https://github.com/kaluginvit-svg/Portfolio/pkgs/container/dostaffkin-backend) |
 | Telegram-бот ↔ PostgreSQL | Каркас «бот ↔ Postgres ↔ бэкап» под анкеты, лиды, заявки | [`postgres-work`](./04-web/postgres-work/) | `docker compose` + бот локально |
+| Мини-CRM (учебная) | FastAPI + React, OAuth Google, выгрузка в Sheets | [`mini-crm-fastapi-react`](./04-web/mini-crm-fastapi-react/) | `docker compose` + `npm run dev` |
 
 ### [05 — ИИ-консалтинг](./05-ai-consulting/)
 

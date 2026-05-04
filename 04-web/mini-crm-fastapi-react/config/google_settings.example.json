@@ -1,0 +1,5 @@
+{
+  "client_secret_path": "google_integration/client_secret.json",
+  "parent_folder_id": "paste-drive-folder-id-from-url",
+  "google_token_path": "data/google_token.pickle"
+}

@@ -1,0 +1,41 @@
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Локальная конфигурация (не в git)
+.env
+.env.local
+.env.*.local
+
+# База и любые токены в data/
+data/*.db
+data/*.pickle
+data/*.sqlite*
+data/client_secret*.json
+data/google_token*.json
+!data/.gitkeep
+
+# Настройки Google с вашими путями и folder ID
+config/google_settings.json
+
+# OAuth client secret (GCP) — только примеры с суффиксом .example коммитим
+google_integration/client_secret*.json
+!google_integration/client_secret.example.json
+google_integration/token.pickle
+google_integration/token.json
+
+# Прочие токены в корне / мусор
+google_token.json
+*.pickle
+
+# Node / фронт
+node_modules/
+frontend/dist/
+frontend/.env.local
+frontend/.env.*.local
+
+.DS_Store
+.pytest_cache/
+.coverage
+htmlcov/

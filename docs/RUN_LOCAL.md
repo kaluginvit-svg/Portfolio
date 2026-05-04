@@ -73,10 +73,12 @@ npm start                  # или npm run dev / npm run build — см. packag
 | [`02-automation/leadgen-n8n-system`](../02-automation/leadgen-n8n-system/) | `docker compose up`, UI на `5678`, импорт workflow 01–11 |
 | [`02-automation/yandex-google-sync`](../02-automation/yandex-google-sync/) | OAuth по README, потом `python main.py sync` |
 | [`02-automation/mortgage-calculator`](../02-automation/mortgage-calculator/) | `python app.py` или `docker run -p 5000:5000 ghcr.io/kaluginvit-svg/mortgage-calculator:latest` |
+| [`02-automation/google-sheets-report`](../02-automation/google-sheets-report/) | `pip install -r requirements.txt`, сервисный аккаунт по README, `python report_generator.py` |
 | [`03-ai-products/mcp-lesson`](../03-ai-products/mcp-lesson/) | `.env` → `docker compose up` |
 | [`03-ai-products/svo-payments-bot`](../03-ai-products/svo-payments-bot/) | `.env` → `docker run` (готовый образ в GHCR) |
 | [`04-web/dostaffkin`](../04-web/dostaffkin/) | `docker compose up`, `/health` на `:3000`, статика на `:8080` (или **онлайн-демо**: [kaluginvit72.github.io/dostaffkin](https://kaluginvit72.github.io/dostaffkin/)) |
 | [`04-web/postgres-work`](../04-web/postgres-work/) | `docker compose up`, `.env`, `python bot.py` |
+| [`04-web/mini-crm-fastapi-react`](../04-web/mini-crm-fastapi-react/) | `docker compose up --build`, в другом терминале `cd frontend && npm install && npm run dev` (см. README) |
 
 Полный список образов и контекстов сборки → [`GHCR_IMAGES.md`](./GHCR_IMAGES.md).
 

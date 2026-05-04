@@ -10,6 +10,7 @@
 | [`barista-payroll-sheets`](./barista-payroll-sheets/) | Скрипты для Google Sheets (расчёты) |
 | [`currency-travel-api`](./currency-travel-api/) | API курсов валют для поездок |
 | [`github-actions-setup`](./github-actions-setup/) | **CI/CD-шаблон**: GitHub Actions → GHCR → SSH-deploy + FastAPI Time API |
+| [`google-sheets-report`](./google-sheets-report/) | Учебный кейс: отчёт в Google Sheets (сервисный аккаунт + tkinter) |
 | [`hotel-booking-tally-supabase`](./hotel-booking-tally-supabase/) | n8n + Supabase: учёт бронирований |
 | [`leadgen-n8n-system`](./leadgen-n8n-system/) | Связка workflow лидогенерации в n8n |
 | [`mortgage-calculator`](./mortgage-calculator/) | Flask-калькулятор ипотеки/рассрочки + экспорт графика в Excel |

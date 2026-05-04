@@ -111,6 +111,16 @@ export const cases: CaseItem[] = [
     liveUrl: 'https://github.com/kaluginvit-svg/Portfolio/pkgs/container/github-actions-setup',
   },
   {
+    id: 'google-sheets-report',
+    category: '02',
+    categoryLabel: 'Автоматизация',
+    title: 'Google Sheets — отчёт',
+    result: 'Сервисный аккаунт, оформленный лист, tkinter-симулятор.',
+    repoPath: '02-automation/google-sheets-report',
+    liveLabel: 'Репозиторий',
+    liveUrl: `${tree}/02-automation/google-sheets-report`,
+  },
+  {
     id: 'seo-mcp',
     category: '03',
     categoryLabel: 'ИИ-продукты',
@@ -179,6 +189,16 @@ export const cases: CaseItem[] = [
     repoPath: '04-web/postgres-work',
     liveLabel: 'Репозиторий',
     liveUrl: `${tree}/04-web/postgres-work`,
+  },
+  {
+    id: 'mini-crm-google',
+    category: '04',
+    categoryLabel: 'Веб',
+    title: 'Мини-CRM + Google',
+    result: 'FastAPI + React, OAuth Drive/Sheets, выгрузка отчётов.',
+    repoPath: '04-web/mini-crm-fastapi-react',
+    liveLabel: 'Репозиторий',
+    liveUrl: `${tree}/04-web/mini-crm-fastapi-react`,
   },
   {
     id: 'ai-accounting',

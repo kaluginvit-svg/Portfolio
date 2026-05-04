@@ -19,9 +19,12 @@
 | Папка | Кратко |
 |--------|--------|
 | [`audio-transcriber`](./audio-transcriber/) | Транскрибация аудио (faster-whisper) |
+| [`autonomous-agents`](./autonomous-agents/) | ИИ-агент сбора SEO-ядра по списку URL (FastAPI + ProxyAPI + SSE) |
 | [`crewai-multiagent`](./crewai-multiagent/) | Мультиагентная схема CrewAI |
 | [`finance-mcp-server`](./finance-mcp-server/) | MCP-сервер для финансовых сценариев |
+| [`mcp-lesson`](./mcp-lesson/) | MCP-сервер каталога + Telegram-бот: end-to-end LLM↔MCP↔БД |
 | [`memory-bot`](./memory-bot/) | Лёгкий бот с памятью на SQLite |
+| [`pdf-checker`](./pdf-checker/) | Массовая генерация PDF-чеков по CSV/JSON (WeasyPrint, кириллица) |
 | [`personal-rag-assistant`](./personal-rag-assistant/) | Персональный RAG-ассистент в Telegram |
 | [`seo-mcp-bot`](./seo-mcp-bot/) | MCP для Yandex Wordstat и SEO |
 | [`smart-text-helper`](./smart-text-helper/) | Помощник по тексту |

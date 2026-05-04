@@ -1,4 +1,11 @@
-# Урок: MCP + Telegram-бот
+# MCP + Telegram-бот: end-to-end пример
+
+> **Проблема:** показать клиенту/команде, как именно ИИ-агент использует MCP для работы с реальной бизнес-БД (каталог товаров) — без зависшей в воздухе теории.  
+> **Решение:** связка из двух частей — MCP-сервер `product-mcp` (SQLite + 4 инструмента: `list_products`, `find_product`, `add_product`, `calculate`) и Telegram-бот, в котором OpenAI Chat Completions сам решает, какой инструмент вызвать. Между ними — Streamable HTTP MCP.  
+> **Стек:** Python 3.10+, MCP SDK, SQLite, OpenAI Chat Completions, aiogram, Streamable HTTP.  
+> **Ценность:** рабочий end-to-end пример «LLM ↔ MCP ↔ БД», адаптируемый под любой каталог; тот же MCP-сервер можно подключить к Cursor/Claude Desktop по stdio без переписывания кода.
+
+---
 
 Два компонента:
 

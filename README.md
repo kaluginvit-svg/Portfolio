@@ -56,6 +56,7 @@
 | Лидогенерация, 11 workflow n8n | [`leadgen-n8n-system`](./02-automation/leadgen-n8n-system/) |
 | Яндекс.Диск ↔ Google Drive | [`yandex-google-sync`](./02-automation/yandex-google-sync/) |
 | Бронирования Tally → Supabase → почта | [`hotel-booking-tally-supabase`](./02-automation/hotel-booking-tally-supabase/) |
+| CI/CD-шаблон: GitHub Actions → GHCR → SSH-deploy | [`github-actions-setup`](./02-automation/github-actions-setup/) |
 
 ### [03 — ИИ-продукты](./03-ai-products/)
 
@@ -65,6 +66,8 @@
 | MCP + Yandex Wordstat | [`seo-mcp-bot`](./03-ai-products/seo-mcp-bot/) |
 | Команда в чате: Haystack + Pinecone | [`team-ai-bot`](./03-ai-products/team-ai-bot/) |
 | Персональный RAG в Telegram | [`personal-rag-assistant`](./03-ai-products/personal-rag-assistant/) |
+| ИИ-агент сбора SEO-ядра по списку URL (FastAPI + ProxyAPI) | [`autonomous-agents`](./03-ai-products/autonomous-agents/) |
+| End-to-end MCP: каталог-БД ↔ Telegram-бот | [`mcp-lesson`](./03-ai-products/mcp-lesson/) |
 
 ### [04 — Веб](./04-web/)
 
@@ -72,6 +75,7 @@
 |------|--------|
 | Сайт СВО | [`svo-payouts-website`](./04-web/svo-payouts-website/) |
 | Angular + Express, доставка | [`dostaffkin`](./04-web/dostaffkin/) |
+| Telegram-бот ↔ PostgreSQL: сбор анкет с бэкапом | [`postgres-work`](./04-web/postgres-work/) |
 
 ### [05 — ИИ-консалтинг](./05-ai-consulting/)
 

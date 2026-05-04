@@ -1,6 +1,6 @@
 ---
 name: Portfolio thematic restructure
-overview: "Сессия 1: реструктуризация и гигиена. Сессия 2: продакшен-доводка README/Docker/медиа для 8 флагов (верхний слой). Сессия 3+: вторая волна флагманов, корневая витрина README."
+overview: "Сессия 1: реструктуризация и гигиена. Сессия 2: 8 флагманов первой волны. Сессия 3: вторая волна флагманов, корневая витрина README, минимальные README по не-флагманам."
 todos:
   - id: gitignore-and-cleanup
     content: "Сессия 1: создать корневой .gitignore, удалить .venv/venv/node_modules/.next/__pycache__/.pytest_cache/логи (~30 000 файлов)"
@@ -52,13 +52,13 @@ todos:
     status: completed
   - id: flagship-wave-2
     content: "Сессия 3 — вторая волна: hotel-booking-tally-supabase, barista-payroll-sheets, audio-transcriber, fintech-ab-test, ai-in-accounting"
-    status: pending
+    status: completed
   - id: non-flagship-cleanup
     content: "Сессия 3: минимальная косметика для ~15 не-флагман проектов (4-блочный README + чистка)"
-    status: pending
+    status: completed
   - id: root-readme
     content: "Сессия 3: корневой README.md — hero, бейджи, карточки категорий, контакты, featured-блок"
-    status: pending
+    status: completed
   - id: rename-repo-optional
     content: (Опционально) На GitHub имя репозитория привести к Portfolio — если ещё не сделано
     status: pending

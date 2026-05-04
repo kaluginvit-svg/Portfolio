@@ -18,6 +18,15 @@
 - **MDE по ТЗ:** `2.5%`
 - **Главный вывод:** в анализируемых данных тестовая группа показывает сильный положительный uplift по `CR_apply` и `CTR`, но исходный 7-дневный эксперимент недостаточно мощный для надежной проверки столь малого MDE на реальном независимом трафике. Поэтому результат стоит интерпретировать как **сильный directional signal**, а не как окончательное доказательство для безусловного rollout.
 
+## Методология и воспроизводимость
+
+| Тема | Где в проекте |
+|------|----------------|
+| MDE 2.5%, мощность, размер выборки | Разделы **Methodology**, **MDE and sample size**, **Limitations** ниже; выгрузки в `data/processed/` (`mde_grid.csv`, `sample_size_recommendation.csv`) |
+| Статистика | User-level **Welch t-test** по основным метрикам |
+| Ноутбук с разбором | [`notebooks/ab_test_analysis_showcase.ipynb`](./notebooks/ab_test_analysis_showcase.ipynb) — просмотр онлайн после публикации репозитория: [открыть в nbviewer](https://nbviewer.org/github/kaluginvit-svg/Portfolio/blob/main/01-data-analytics/fintech-ab-test-credit-offer/notebooks/ab_test_analysis_showcase.ipynb) |
+| Пайплайн без UI | `make all` или шаги из **Quick start** |
+
 ## Business context
 
 В финтех-приложении на домашнем экране показывается лента продуктов и спецпредложений.  

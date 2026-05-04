@@ -64,37 +64,37 @@ todos:
     status: pending
   - id: git-mv-7
     content: "Этап 6.1: перенести 7 папок из 99-archive через git mv (mcp-lesson, autonomous-agents → 03-ai-products; mortgage-calculator, n8n-bpmn-notes, github-actions-setup → 02-automation; pdf-checker → 03-ai-products; postgres-work → 04-web)"
-    status: pending
+    status: completed
   - id: dedup-autonomous-local
     content: "Этап 6.2: удалить 99-archive/autonomous-agents-local/ (дубль autonomous-agents)"
-    status: pending
+    status: completed
   - id: merge-go-server
     content: "Этап 6.3: влить 99-archive/go-server-mini/ внутрь 99-archive/ai-coding-lessons/ как Go-аналог Python API (демонстрация языкового паритета)"
-    status: pending
+    status: completed
   - id: readme-promoted-automation
     content: "Этап 6.4: README у 3 промо-проектов в 02-automation (mortgage-calculator — финрасчёты; n8n-bpmn-notes — методика BPMN; github-actions-setup — CI/CD-шаблон)"
-    status: pending
+    status: completed
   - id: readme-promoted-ai
     content: "Этап 6.5: README у 3 промо-проектов в 03-ai-products (mcp-lesson, autonomous-agents, pdf-checker) — проблема/решение/стек/демо"
-    status: pending
+    status: completed
   - id: readme-promoted-web
     content: "Этап 6.6: README у 04-web/postgres-work — описание fullstack-кейса с PostgreSQL"
-    status: pending
+    status: completed
   - id: readme-cats-update
     content: "Этап 6.7: обновить категорийные README 02-automation/03-ai-products/04-web — добавить промо-проекты в таблицы"
-    status: pending
+    status: completed
   - id: readme-root-update
     content: "Этап 6.8: корневой README.md — добавить промо-проекты в карточки/featured-блок где уместно"
-    status: pending
+    status: completed
   - id: archive-prune-cached
     content: "Этап 7.1: git rm -r --cached на 15 «remove» папок в 99-archive (api-testing-bot, auto-deploy-lesson, autonomous-agents-local, db-lessons, docker-lessons, langchain-lesson-1, langchain-lesson-2, llm-lessons, local-ai-agent, loki-grafana-stack, python-modules-lessons, python-oop-practice, recipe-search-bot, sql-lessons, sqlite-lesson) — локально файлы остаются"
-    status: pending
+    status: completed
   - id: gitignore-prune
     content: "Этап 7.2: дописать 15 удалённых путей в корневой .gitignore (под секцией # Pruned archive)"
-    status: pending
+    status: completed
   - id: readme-archive-rebuild
     content: "Этап 7.3: переписать 99-archive/README.md — список 15 «keep» с описаниями (9 полузавершённых продуктов + 6 методических артефактов с кодом)"
-    status: pending
+    status: in_progress
   - id: commit-push-final
     content: "Этап 6+7 финал: 2 коммита (chore(archive): promote 7 + chore(archive): prune to 15) и git push origin main без force"
     status: pending

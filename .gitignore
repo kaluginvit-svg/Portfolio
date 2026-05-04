@@ -59,3 +59,22 @@ ASSETS/local/
 # Видео/огромные дампы хранить локально или в LFS, не в обычном git.
 **/*.mp4
 **/tg_catalog*.db
+
+# --- Pruned archive (kept locally, excluded from repo) ---
+# Учебные обрывки и дубли, удалённые из 99-archive в Этапе 7.
+# Папки физически остаются на диске у автора, но в репозиторий не возвращаются.
+99-archive/api-testing-bot/
+99-archive/auto-deploy-lesson/
+99-archive/db-lessons/
+99-archive/docker-lessons/
+99-archive/langchain-lesson-1/
+99-archive/langchain-lesson-2/
+99-archive/llm-lessons/
+99-archive/local-ai-agent/
+99-archive/loki-grafana-stack/
+99-archive/postgres-lessons/
+99-archive/python-modules-lessons/
+99-archive/python-oop-practice/
+99-archive/recipe-search-bot/
+99-archive/sql-lessons/
+99-archive/sqlite-lesson/

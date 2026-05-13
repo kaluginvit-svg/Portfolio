@@ -68,6 +68,14 @@
   <a href="./Сертификаты/Лендинг.png"><img src="./Сертификаты/Лендинг.png" alt="Лендинг" width="180"/></a><br/><sub>Лендинг</sub>
 </td>
 </tr>
+<tr>
+<td align="center">
+  <a href="./Сертификаты/Автоматизация_n8n_рус.png"><img src="./Сертификаты/Автоматизация_n8n_рус.png" alt="Автоматизация на n8n" width="180"/></a><br/><sub>Автоматизация на n8n</sub>
+</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
 </table>
 
 <p align="center"><a href="./Сертификаты/"><strong>Все файлы в папке Сертификаты →</strong></a></p>
